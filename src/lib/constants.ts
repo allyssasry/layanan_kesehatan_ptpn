@@ -1,0 +1,111 @@
+// src/lib/constants.ts - Master Constants & Lists (PTPN-LK3)
+
+export const INTERVENSI_PROMOTIF = [
+  'Health Talk',
+  'Sekantor',
+  'Gym',
+  'Medical Check Up',
+  'Healthy Food',
+  'Konsultasi Kesehatan',
+  'Weight Loss Challenge',
+  'Vaksin Hepatitis B',
+];
+
+export const INTERVENSI_KURATIF = [
+  'Konsultasi Lanjutan',
+  'Employee Health Counseling Program',
+  'Kesegaran',
+];
+
+export const INTERVENSI_REHABILITATIF = [
+  'Monitoring hasil tindak lanjut oleh dokter ahli',
+];
+
+export const PENYAKIT_LIST = [
+  'Anemia',
+  'Diabetes Mellitus',
+  'Hipertensi',
+  'Hipertensi Tingkat 1',
+  'Hipertensi Tingkat 2',
+  'Kolesterol',
+  'Asam Urat Tinggi',
+  'SGOT & SGPT Meningkat',
+  'Gangguan Fungsi Hati',
+  'Hepatitis B (Non Imun)',
+  'Hepatitis C',
+  'Gangguan Refraksi Mata',
+  'Gangguan Pendengaran',
+  'Gangguan Ginjal',
+  'Infeksi Saluran Kemih',
+  'Gangguan Tiroid',
+  'Obesitas',
+  'Overweight',
+  'TBC / TB Paru',
+  'ISPA',
+  'Bronkitis',
+  'Asma',
+  'Jantung Koroner',
+  'Gangguan Lambung / GERD',
+  'Dermatitis / Eksim',
+  'Osteoarthritis',
+  'Hernia',
+  'Vertigo',
+  'Fatty Liver',
+  'Mild Fatty Liver',
+  'Dislipidemia',
+  'Hiperkolesterolemia',
+  'Trigliserida Tinggi',
+  'Abnormal EKG',
+  'Treadmill (+)',
+  'Suspect CAD',
+  'Buta Warna',
+  'Gigi',
+  'Polip Empedu',
+  'Kista Ginjal',
+  'Kista Ovarium',
+  'Paru',
+  'Kelainan Urin',
+];
+
+export const MASTER_OBATS = [
+  'Allopurinol 100 mg',
+  'Alpara',
+  'Ambroxol',
+  'Amlodipin 5 mg',
+  'Amoxicilin',
+  'Asam Mefenamat',
+  'Becomzet',
+  'Betahistine',
+  'Cetirizine',
+  'Degirol',
+  'Dexamethasone (Dex/Dexa)',
+  'Donperidon',
+  'Lansoprazole',
+  'Methylprednisolone 4 mg',
+  'Methylprednisolone 8 mg',
+  'Mucofek',
+  'Neurodex',
+  'New Diatab',
+  'Omeprazole',
+  'Omz',
+  'PCT',
+  'Polysilane',
+  'Ranitidine',
+  'Sanmol',
+  'Scopma',
+  'Tremenza',
+  'Salep Hydrocortisone',
+];
+
+export const ENTITAS_LIST = ['PTPN 1', 'PTPN 3', 'PTPN 4'];
+
+export const DIVISI_LIST = [
+  'Operasional Kebun',
+  'Pengembangan SDM & TI',
+  'Pengolahan Hasil Kebun',
+  'Keuangan & Akuntansi',
+  'Klinik & Kesehatan Worksite',
+  'Sekretariat & Hukum',
+  'Fabrikasi & Pengolahan',
+  'Laboratorium & QC',
+];

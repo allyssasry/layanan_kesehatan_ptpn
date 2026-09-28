@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 120" width="400" height="120">
+  <g transform="translate(10, 10)">
+    <!-- Leaf Icon -->
+    <path d="M 35 15 C 20 30, 15 55, 30 75 C 45 95, 70 95, 75 70 C 80 45, 60 20, 35 15 Z" fill="#eab308" />
+    <path d="M 65 15 C 80 30, 85 55, 70 75 C 55 95, 30 95, 25 70 C 20 45, 40 20, 65 15 Z" fill="#065f46" />
+    <path d="M 50 20 L 50 85" stroke="#ffffff" stroke-width="3" stroke-linecap="round" />
+    <!-- Text Branding -->
+    <text x="105" y="52" font-family="'Segoe UI', Roboto, Arial, sans-serif" font-weight="900" font-size="38" fill="#064e3b" letter-spacing="1">PTPN III</text>
+    <text x="105" y="76" font-family="'Segoe UI', Roboto, Arial, sans-serif" font-weight="700" font-size="13" fill="#15803d" letter-spacing="3">HOLDING PERKEBUNAN</text>
+  </g>
+</svg>
