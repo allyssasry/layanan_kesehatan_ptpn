@@ -46,6 +46,7 @@ import {
 import { DocumentPreviewModal } from '@/components/common/DocumentPreviewModal';
 import { HealthTrendChart } from '@/components/mcu/HealthTrendChart';
 import { generateSuratRujukanDataUrl } from '@/utils/rujukanGenerator';
+import { SessionHistorySelector } from '@/components/mcu/SessionHistorySelector';
 
 function formatDate(dateStr: string | null | undefined, includeTime = false, customTime?: string | null): string {
   if (!dateStr) return '-';
@@ -1065,99 +1066,18 @@ function DetailMiniMcuContent() {
         </div>
 
         {/* ==================================================== */}
-        {/* SECTION 2: BOTTOM LONG HORIZONTAL SESSION ACCORDION */}
+        {/* SECTION 2: SESSION SELECTOR (CARDS / TABLE VIEW)    */}
         {/* ==================================================== */}
-        <div className="space-y-5 pt-4 border-t border-slate-200">
-          <div>
-            <h2 className="text-xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-              <FileText className="w-6 h-6 text-[#005930]" />
-              <span>Riwayat Hasil Sesi Pemeriksaan Mini MCU Karyawan</span>
-            </h2>
-            <p className="text-xs text-slate-500 font-medium mt-1">
-              Klik atau pilih kartu sesi pemeriksaan di bawah ini untuk menampilkan rincian keluhan, diagnosa, konsul, anjuran, saran, serta dokumen lampiran Surat Sakit.
-            </p>
-          </div>
+        <SessionHistorySelector
+          sessions={patientHistory}
+          activeSessionKey={activeSessionKey}
+          onSelectSession={setActiveSessionKey}
+          role="klinik"
+          title="Riwayat Hasil Sesi Pemeriksaan Mini MCU Karyawan"
+          subtitle="Klik atau pilih kartu atau baris tabel sesi pemeriksaan di bawah ini untuk menampilkan rincian keluhan, diagnosa, konsul, anjuran, saran, serta dokumen lampiran Surat Sakit."
+        />
 
-          {/* Session Selector Scroll Container */}
-          <div className="flex items-center gap-3">
-            {patientHistory.length > 3 && (
-              <button
-                type="button"
-                onClick={() => scrollSessions('left')}
-                className="shrink-0 w-10 h-10 rounded-full bg-white border border-slate-300 text-slate-700 shadow-md hover:bg-[#005930] hover:text-white flex items-center justify-center transition cursor-pointer hover:scale-105"
-                title="Geser ke Kiri"
-              >
-                <ChevronLeft className="w-5 h-5" />
-              </button>
-            )}
 
-            <div
-              ref={scrollContainerRef}
-              className="flex-1 min-w-0 flex overflow-x-auto gap-4 pb-2 pt-1 scroll-smooth snap-x snap-mandatory no-scrollbar"
-              style={{ scrollbarWidth: 'none' }}
-            >
-              {patientHistory.map((sRec) => {
-                const sKey = `${sRec.created_by_role}-${sRec.id}`;
-                const isActive = sKey === activeSessionKey;
-                const isMandiri = sRec.created_by_role === 'karyawan' || (sRec.nama_dokter && sRec.nama_dokter.toLowerCase().includes('mandiri')) || (sRec.diagnosa && sRec.diagnosa.toLowerCase().includes('mandiri'));
-                const sRoleLabel = isMandiri ? 'Pemeriksaan Mandiri' : (sRec.created_by_role === 'klinik' ? 'Klinik' : 'Admin');
-                const sTitle = isMandiri
-                  ? `Hasil MCU Mandiri ${formatMonthYear(sRec.tanggal_pemeriksaan)}`
-                  : `Hasil ${sRec.created_by_role === 'klinik' ? 'Mini MCU' : 'MCU'} ${formatMonthYear(sRec.tanggal_pemeriksaan)}`;
-                const sDate = formatDateShort(sRec.tanggal_pemeriksaan);
-                const sStatus = sRec.status_kebugaran || sRec.kesimpulan || 'Fit';
-
-                return (
-                  <button
-                    key={sKey}
-                    type="button"
-                    onClick={() => setActiveSessionKey(sKey)}
-                    className={`shrink-0 w-full sm:w-[calc(33.3333%-0.67rem)] snap-start text-left p-4 rounded-2xl border transition-all duration-200 cursor-pointer flex items-center justify-between gap-3 ${
-                      isActive
-                        ? 'bg-[#005930] border-[#005930] text-white ring-2 ring-emerald-600 shadow-md'
-                        : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-800 hover:border-emerald-400 hover:shadow-xs hover:-translate-y-0.5'
-                    }`}
-                  >
-                    <div className="space-y-1 min-w-0">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className={`text-sm font-black tracking-wide truncate ${isActive ? 'text-white' : 'text-slate-900'}`}>
-                          {sTitle}
-                        </span>
-                        <span
-                          className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${
-                            isActive ? 'bg-[#004726] text-emerald-100' : 'bg-slate-200 text-slate-700'
-                          }`}
-                        >
-                          {sRoleLabel}
-                        </span>
-                      </div>
-                      <p className={`text-xs font-semibold flex items-center gap-1 ${isActive ? 'text-emerald-100' : 'text-slate-600'}`}>
-                        <Calendar className="w-3.5 h-3.5 shrink-0 opacity-80" />
-                        <span className="truncate">Tgl: {sDate}</span>
-                      </p>
-                    </div>
-
-                    <div className="shrink-0">
-                      <span className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-black shadow-2xs ${getStatusBadgeStyle(sStatus)}`}>
-                        {sStatus}
-                      </span>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-
-            {patientHistory.length > 3 && (
-              <button
-                type="button"
-                onClick={() => scrollSessions('right')}
-                className="shrink-0 w-10 h-10 rounded-full bg-white border border-slate-300 text-slate-700 shadow-md hover:bg-[#005930] hover:text-white flex items-center justify-center transition cursor-pointer hover:scale-105"
-                title="Geser ke Kanan"
-              >
-                <ChevronRight className="w-5 h-5" />
-              </button>
-            )}
-          </div>
 
           {/* Detailed Session Display Panel */}
           <div className="space-y-5 pt-2">
@@ -1183,7 +1103,7 @@ function DetailMiniMcuContent() {
                     <div className="flex items-center gap-1.5">
                       <span className="text-slate-500 font-medium">Instansi Pemeriksa:</span>
                       <span className="font-black text-[#005930] bg-white px-3 py-1 rounded-xl border border-slate-200 shadow-2xs">
-                        {rec.nama_rs || rs || 'RS Siloam'}
+                        {rs || '-'}
                       </span>
                     </div>
                     <div className="flex items-center gap-1.5">
@@ -1201,7 +1121,7 @@ function DetailMiniMcuContent() {
                     <div className="flex items-center gap-1.5">
                       <span className="text-slate-500 font-medium">Tempat / Klinik:</span>
                       <span className="font-black text-[#005930] bg-white px-3 py-1 rounded-xl border border-slate-200 shadow-2xs">
-                        {rec.nama_rs || rs || 'Klinik Pratama PTPN'}
+                        {rs || '-'}
                       </span>
                     </div>
                     <div className="flex items-center gap-1.5">
@@ -1216,6 +1136,12 @@ function DetailMiniMcuContent() {
                 {/* Sesi Klinik: Dokter Pemeriksa, Perawat / Asisten, dan Jam */}
                 {rec.created_by_role === 'klinik' && !isMandiri && (
                   <>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-slate-500 font-medium">Klinik Pemeriksa:</span>
+                      <span className="font-black text-[#005930] bg-white px-3 py-1 rounded-xl border border-slate-200 shadow-2xs">
+                        Inhouse Clinic
+                      </span>
+                    </div>
                     <div className="flex items-center gap-1.5">
                       <span className="text-slate-500 font-medium">Dokter Pemeriksa:</span>
                       <span className="font-black text-[#005930] bg-white px-3 py-1 rounded-xl border border-slate-200 shadow-2xs">
@@ -1670,7 +1596,6 @@ function DetailMiniMcuContent() {
               );
             })()}
           </div>
-        </div>
 
         {/* ==================================================== */}
         {/* DOCUMENT PREVIEW MODAL (UNIVERSAL PDF, IMAGE, EXCEL) */}

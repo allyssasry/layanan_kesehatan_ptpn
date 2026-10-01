@@ -825,7 +825,7 @@ export async function insertKaryawanRecordToSupabase(
     umur: Number(record.umur) || 30,
     tanggal_pemeriksaan: record.tanggal_pemeriksaan || getWIBDate(),
     jam_pemeriksaan: formattedJam,
-    nama_rs: record.nama_rs || record.nama_instansi || record.nama_klinik || 'Klinik Pratama PTPN',
+    nama_rs: record.nama_rs || record.nama_instansi || record.nama_klinik || null,
     nama_poli: record.nama_poli || null,
     foto: resolvedKaryawanFoto,
     file_dokumen: record.file_dokumen || null,

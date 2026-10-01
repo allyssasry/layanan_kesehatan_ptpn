@@ -276,7 +276,11 @@ export default function AdminEditDataPage() {
         umur: String(rec.umur || '35'),
         tanggal_pemeriksaan: existingExamDate,
         jam_periksa: existingExamTime,
-        nama_instansi: rec.nama_rs || rec.nama_instansi || 'Klinik Pratama PTPN',
+        nama_instansi: (rec.nama_rs && !['-', 'null', 'undefined', 'klinik pratama ptpn', 'klinik pratama ptpn 3'].includes(rec.nama_rs.toLowerCase().trim()))
+          ? rec.nama_rs
+          : (rec.nama_instansi && !['-', 'null', 'undefined', 'klinik pratama ptpn', 'klinik pratama ptpn 3'].includes(rec.nama_instansi.toLowerCase().trim()))
+          ? rec.nama_instansi
+          : '',
         golongan_darah: rec.golongan_darah || 'O+',
         tinggi_badan: String(rec.tinggi_badan || rec.vitals?.tinggi_badan || '170'),
         berat_badan: String(rec.berat_badan || rec.vitals?.berat_badan || '68'),

@@ -601,8 +601,8 @@ export default function AdminTambahDataPage() {
       nama_dokter: null,
       perawat: null,
       nama_perawat: null,
-      nama_instansi: formData.nama_instansi || 'Klinik Pratama PTPN',
-      nama_rs: formData.nama_instansi || null,
+      nama_instansi: formData.nama_instansi.trim() || null,
+      nama_rs: formData.nama_instansi.trim() || null,
       nama_poli: null,
       status_kebugaran: formData.status_kebugaran,
       vitals: {

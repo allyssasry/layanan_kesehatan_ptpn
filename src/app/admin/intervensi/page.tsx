@@ -23,6 +23,8 @@ import {
   AlertTriangle,
   Clock,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   ClipboardList,
   Eye,
   CheckCircle2,
@@ -74,6 +76,8 @@ export default function AdminIntervensiPage() {
 
   const [selectedBulan, setSelectedBulan] = useState('all');
   const [kategoriFilter, setKategoriFilter] = useState('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const perPage = 15;
   const [showReminderBanner, setShowReminderBanner] = useState(true);
 
   // Modal States
@@ -267,6 +271,24 @@ export default function AdminIntervensiPage() {
     if (kategoriFilter === 'rehabilitatif') return followUpPatients.filter((p) => p.has_rehabilitatif);
     return followUpPatients;
   }, [followUpPatients, kategoriFilter]);
+
+  // Reset halaman saat filter kategori atau bulan berubah
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [kategoriFilter, selectedBulan]);
+
+  const totalPages = Math.ceil(filteredPatients.length / perPage) || 1;
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [totalPages, currentPage]);
+
+  const paginatedPatients = useMemo(() => {
+    const start = (currentPage - 1) * perPage;
+    return filteredPatients.slice(start, start + perPage);
+  }, [filteredPatients, currentPage, perPage]);
 
   // 3. Metrik Penghitungan Summary Cards
   const patientsDueToday = useMemo(() => {
@@ -764,7 +786,7 @@ export default function AdminIntervensiPage() {
             <>
               {/* Mobile Card View (< md) */}
               <div className="block md:hidden space-y-3">
-                {filteredPatients.map((p, idx) => {
+                {paginatedPatients.map((p, idx) => {
                   const detailUrl = `/admin/mcu/${p.id}?type=${p.record_type}&session=${p.record_type === 'mini' ? 'klinik' : 'admin'}-${p.id}`;
 
                   return (
@@ -776,35 +798,30 @@ export default function AdminIntervensiPage() {
                           : 'bg-white border-slate-200 shadow-2xs'
                       }`}
                     >
-                      {/* Card Header: Avatar, Name, NIK, Divisi & Badge Number */}
-                      <div className="flex items-start justify-between gap-2.5">
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          {p.foto ? (
-                            <img
-                              src={p.foto}
-                              alt={p.nama_lengkap}
-                              className="w-10 h-10 rounded-full object-cover shrink-0 border border-slate-200"
-                            />
-                          ) : (
-                            <div className="w-10 h-10 rounded-full bg-[#064e3b] text-white font-extrabold text-xs flex items-center justify-center shrink-0 shadow-2xs">
-                              {p.nama_lengkap.substring(0, 2).toUpperCase()}
-                            </div>
-                          )}
-                          <div className="min-w-0">
-                            <Link
-                              href={detailUrl}
-                              className="font-extrabold text-sm text-slate-900 hover:text-emerald-700 transition truncate block text-left"
-                            >
-                              {p.nama_lengkap}
-                            </Link>
-                            <p className="text-[11px] text-slate-500 font-medium truncate">
-                              {p.nik} &bull; {p.divisi}
-                            </p>
+                      {/* Card Header: Avatar, Name, NIK, Divisi */}
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        {p.foto ? (
+                          <img
+                            src={p.foto}
+                            alt={p.nama_lengkap}
+                            className="w-10 h-10 rounded-full object-cover shrink-0 border border-slate-200"
+                          />
+                        ) : (
+                          <div className="w-10 h-10 rounded-full bg-[#064e3b] text-white font-extrabold text-xs flex items-center justify-center shrink-0 shadow-2xs">
+                            {p.nama_lengkap.substring(0, 2).toUpperCase()}
                           </div>
+                        )}
+                        <div className="min-w-0">
+                          <Link
+                            href={detailUrl}
+                            className="font-extrabold text-sm text-slate-900 hover:text-emerald-700 transition truncate block text-left"
+                          >
+                            {p.nama_lengkap}
+                          </Link>
+                          <p className="text-[11px] text-slate-500 font-medium truncate">
+                            {p.nik} &bull; {p.divisi}
+                          </p>
                         </div>
-                        <span className="w-6 h-6 rounded-full bg-slate-100 text-slate-600 font-extrabold text-[11px] flex items-center justify-center shrink-0">
-                          #{idx + 1}
-                        </span>
                       </div>
 
                       {/* Categories & Programs */}
@@ -955,7 +972,7 @@ export default function AdminIntervensiPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 text-slate-800">
-                      {filteredPatients.map((p, idx) => {
+                      {paginatedPatients.map((p, idx) => {
                         const detailUrl = `/admin/mcu/${p.id}?type=${p.record_type}&session=${p.record_type === 'mini' ? 'klinik' : 'admin'}-${p.id}`;
 
                         return (
@@ -965,7 +982,7 @@ export default function AdminIntervensiPage() {
                               }`}
                           >
                             {/* 1. NO */}
-                            <td className="py-4 px-3 text-center font-bold text-slate-700">{idx + 1}</td>
+                            <td className="py-4 px-3 text-center font-bold text-slate-700">{(currentPage - 1) * perPage + idx + 1}</td>
 
                             {/* 2. PASIEN / KARYAWAN */}
                             <td className="py-4 px-3">
@@ -1119,6 +1136,79 @@ export default function AdminIntervensiPage() {
                       })}
                     </tbody>
                   </table>
+                </div>
+              </div>
+
+              {/* Pagination Bar */}
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-slate-100 text-xs font-semibold text-slate-600">
+                <div className="text-slate-600 text-center sm:text-left">
+                  Menampilkan{' '}
+                  <strong className="text-slate-900">
+                    {filteredPatients.length === 0 ? 0 : (currentPage - 1) * perPage + 1}
+                  </strong>{' '}
+                  -{' '}
+                  <strong className="text-slate-900">
+                    {Math.min(currentPage * perPage, filteredPatients.length)}
+                  </strong>{' '}
+                  dari <strong className="text-slate-900">{filteredPatients.length}</strong> Pasien
+                </div>
+
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    disabled={currentPage <= 1}
+                    onClick={() => {
+                      setCurrentPage((p) => Math.max(p - 1, 1));
+                      document.getElementById('daftar-pasien-table')?.scrollIntoView({ behavior: 'smooth' });
+                    }}
+                    className="px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100 transition shadow-2xs flex items-center gap-1 text-slate-700 font-bold cursor-pointer"
+                    title="Halaman Sebelumnya"
+                  >
+                    <ChevronLeft className="w-3.5 h-3.5" />
+                    <span>Prev</span>
+                  </button>
+
+                  {Array.from({ length: totalPages }, (_, i) => i + 1)
+                    .filter((p) => {
+                      if (totalPages <= 5) return true;
+                      return Math.abs(p - currentPage) <= 1 || p === 1 || p === totalPages;
+                    })
+                    .map((page, idx, arr) => {
+                      const showEllipsis = idx > 0 && page - arr[idx - 1] > 1;
+                      return (
+                        <React.Fragment key={page}>
+                          {showEllipsis && <span className="px-1 text-slate-400">...</span>}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setCurrentPage(page);
+                              document.getElementById('daftar-pasien-table')?.scrollIntoView({ behavior: 'smooth' });
+                            }}
+                            className={`w-7 h-7 rounded-lg text-xs font-bold transition shadow-2xs cursor-pointer ${
+                              currentPage === page
+                                ? 'bg-emerald-800 text-white shadow-xs'
+                                : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100'
+                            }`}
+                          >
+                            {page}
+                          </button>
+                        </React.Fragment>
+                      );
+                    })}
+
+                  <button
+                    type="button"
+                    disabled={currentPage >= totalPages}
+                    onClick={() => {
+                      setCurrentPage((p) => Math.min(p + 1, totalPages));
+                      document.getElementById('daftar-pasien-table')?.scrollIntoView({ behavior: 'smooth' });
+                    }}
+                    className="px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100 transition shadow-2xs flex items-center gap-1 text-slate-700 font-bold cursor-pointer"
+                    title="Halaman Selanjutnya"
+                  >
+                    <span>Next</span>
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               </div>
             </>

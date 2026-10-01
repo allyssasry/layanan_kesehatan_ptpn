@@ -10,6 +10,7 @@ import { McuRecord, MiniMcuRecord } from '@/types/mcu';
 import { HealthTrendChart } from '@/components/mcu/HealthTrendChart';
 import { getRecordTimestamp } from '@/services/mcuService';
 import { DocumentPreviewModal } from '@/components/common/DocumentPreviewModal';
+import { SessionHistorySelector } from '@/components/mcu/SessionHistorySelector';
 import * as XLSX from 'xlsx';
 import {
   Upload,
@@ -1010,136 +1011,24 @@ export default function EmployeeDashboardPage() {
             </div>
 
             {/* ==================================================== */}
-            {/* SECTION 2: BOTTOM HORIZONTAL SESSION ACCORDION CARDS */}
+            {/* SECTION 2: SESSION SELECTOR (CARDS / TABLE VIEW)    */}
             {/* ==================================================== */}
-            <div className="space-y-4 pt-6 border-t border-slate-200">
-              <div>
-                <h2 className="text-lg sm:text-xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2.5">
-                  <FileText className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-800 shrink-0" />
-                  <span>Riwayat Sesi Pemeriksaan Kesehatan &amp; MCU Karyawan</span>
-                </h2>
-                <p className="text-xs text-slate-500 font-medium mt-0.5">
-                  Klik atau pilih kartu sesi pemeriksaan di bawah ini untuk menampilkan rincian keluhan, diagnosa, konsul, anjuran, saran, serta dokumen lampiran Surat Sakit.
-                </p>
-              </div>
-
-              {/* Carousel Row with Left Arrow - Cards List - Right Arrow */}
-              <div className="flex items-center gap-2 sm:gap-3.5 w-full">
-                {/* Left Arrow Button */}
-                {historyRecordsDesc.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => scrollSessions('left')}
-                    className="shrink-0 w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-white border border-slate-200/90 text-slate-600 shadow-sm hover:bg-slate-50 hover:text-slate-900 hover:border-slate-300 flex items-center justify-center transition-all cursor-pointer hover:scale-105 active:scale-95"
-                    title="Geser ke Kiri"
-                    aria-label="Geser ke Kiri"
-                  >
-                    <ChevronLeft className="w-5 h-5 text-slate-600" />
-                  </button>
-                )}
-
-                {/* Cards Scroll Container */}
-                <div
-                  ref={scrollContainerRef}
-                  className="flex-1 min-w-0 flex overflow-x-auto gap-3.5 pb-2 pt-1 scroll-smooth snap-x snap-mandatory [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
-                >
-                  {historyRecordsDesc.map((sessionRec) => {
-                    const isMandiri = sessionRec.created_by_role === 'karyawan' ||
-                      sessionRec.vitals_updated_by_role === 'karyawan' ||
-                      (sessionRec.nama_dokter && sessionRec.nama_dokter.toLowerCase().includes('mandiri')) ||
-                      (sessionRec.diagnosa && sessionRec.diagnosa.toLowerCase().includes('mandiri'));
-                    const roleKey = isMandiri ? 'karyawan' : (sessionRec.created_by_role || 'admin');
-                    const recKey = `${roleKey}-${sessionRec.id}`;
-                    const monthYearStr = formatMonthYear(sessionRec.tanggal_pemeriksaan);
-                    const dateFormatted = formatDate(sessionRec.tanggal_pemeriksaan);
-                    const roleLabel = isMandiri ? 'Pemeriksaan Mandiri' : (roleKey === 'klinik' ? 'Klinik' : 'Admin');
-                    const mcuTitle = isMandiri
-                      ? `Hasil MCU Mandiri ${monthYearStr}`
-                      : roleKey === 'klinik'
-                      ? `Hasil Mini MCU ${monthYearStr}`
-                      : `Hasil MCU ${monthYearStr}`;
-                    const isActive = recKey === activeKey;
-                    const kesimpulanLabel = getKesimpulanLabel(sessionRec.kesimpulan);
-
-                    return (
-                      <button
-                        key={recKey}
-                        type="button"
-                        onClick={() => setActiveKey(recKey)}
-                        className={`shrink-0 w-[270px] sm:w-[310px] md:w-[330px] snap-start text-left p-4 rounded-2xl border transition-all duration-200 cursor-pointer flex flex-col justify-between gap-2.5 shadow-2xs ${
-                          isActive
-                            ? 'bg-[#005930] border-[#005930] text-white shadow-md'
-                            : 'bg-white hover:bg-slate-50/80 border-slate-200 text-slate-800'
-                        }`}
-                      >
-                        {/* Row 1: Title */}
-                        <div className="w-full">
-                          <h3
-                            className={`text-xs sm:text-sm font-bold tracking-tight truncate ${
-                              isActive ? 'text-white' : 'text-slate-900'
-                            }`}
-                            title={mcuTitle}
-                          >
-                            {mcuTitle}
-                          </h3>
-                        </div>
-
-                        {/* Row 2: Role Badge & Kesimpulan Status Badge */}
-                        <div className="flex items-center justify-between gap-2 w-full">
-                          {/* Role Badge */}
-                          <span
-                            className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-full ${
-                              isActive
-                                ? 'bg-[#004726] text-emerald-100'
-                                : 'bg-slate-100 text-slate-600'
-                            }`}
-                          >
-                            {roleLabel}
-                          </span>
-
-                          {/* Kesimpulan Status Badge */}
-                          <span
-                            className={`text-[11px] font-bold px-3 py-1 rounded-full shadow-2xs whitespace-nowrap ${
-                              isActive
-                                ? 'bg-white text-[#005930]'
-                                : kesimpulanLabel.includes('Catatan')
-                                ? 'bg-amber-500 text-white'
-                                : kesimpulanLabel.includes('Fit for Duty') || kesimpulanLabel === 'Fit'
-                                ? 'bg-[#005930] text-white'
-                                : 'bg-rose-600 text-white'
-                            }`}
-                          >
-                            {kesimpulanLabel}
-                          </span>
-                        </div>
-
-                        {/* Row 3: Date */}
-                        <div
-                          className={`text-xs font-medium flex items-center gap-1.5 ${
-                            isActive ? 'text-emerald-100/90' : 'text-slate-500'
-                          }`}
-                        >
-                          <Calendar className="w-3.5 h-3.5 shrink-0 opacity-80" />
-                          <span>Tgl: {dateFormatted}</span>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* Right Arrow Button */}
-                {historyRecordsDesc.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => scrollSessions('right')}
-                    className="shrink-0 w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-white border border-slate-200/90 text-slate-600 shadow-sm hover:bg-slate-50 hover:text-slate-900 hover:border-slate-300 flex items-center justify-center transition-all cursor-pointer hover:scale-105 active:scale-95"
-                    title="Geser ke Kanan"
-                    aria-label="Geser ke Kanan"
-                  >
-                    <ChevronRight className="w-5 h-5 text-slate-600" />
-                  </button>
-                )}
-              </div>
+            <SessionHistorySelector
+              sessions={historyRecordsDesc}
+              activeSessionKey={activeKey}
+              onSelectSession={setActiveKey}
+              role="karyawan"
+              title="Riwayat Sesi Pemeriksaan Kesehatan & MCU Karyawan"
+              subtitle="Klik atau pilih kartu atau baris tabel di bawah ini untuk menampilkan rincian keluhan, diagnosa, konsul, anjuran, saran, serta dokumen lampiran Surat Sakit."
+              getKey={(sessionRec) => {
+                const isMandiri = sessionRec.created_by_role === 'karyawan' ||
+                  sessionRec.vitals_updated_by_role === 'karyawan' ||
+                  (sessionRec.nama_dokter && sessionRec.nama_dokter.toLowerCase().includes('mandiri')) ||
+                  (sessionRec.diagnosa && sessionRec.diagnosa.toLowerCase().includes('mandiri'));
+                const roleKey = isMandiri ? 'karyawan' : (sessionRec.created_by_role || 'admin');
+                return `${roleKey}-${sessionRec.id}`;
+              }}
+            />
 
               {/* ==================================================== */}
               {/* SESSION DETAILED FINDINGS DISPLAY PANEL              */}
@@ -1587,7 +1476,15 @@ export default function EmployeeDashboardPage() {
                               {activeRecord.created_by_role === 'karyawan' ? 'Tempat / Klinik:' : 'Instansi Pemeriksa:'}
                             </span>
                             <span className="font-black text-[#005930] bg-white px-3 py-1 rounded-xl border border-slate-200 shadow-2xs">
-                              {activeRecord.nama_rs || 'Klinik Pratama PTPN'}
+                              {(() => {
+                                if (activeRecord.created_by_role === 'klinik') return 'Inhouse Clinic';
+                                const raw = activeRecord.nama_rs || (activeRecord as any).nama_instansi || (activeRecord as any).nama_klinik || '';
+                                const trimmed = String(raw).trim();
+                                if (!trimmed || ['-', 'null', 'undefined', 'klinik pratama ptpn', 'klinik pratama ptpn 3'].includes(trimmed.toLowerCase())) {
+                                  return '-';
+                                }
+                                return trimmed;
+                              })()}
                             </span>
                           </div>
                           <div className="flex items-center gap-1.5">
@@ -1893,8 +1790,6 @@ export default function EmployeeDashboardPage() {
                   )}
                 </div>
               )}
-
-            </div>
           </div>
         )}
 
@@ -1978,7 +1873,7 @@ export default function EmployeeDashboardPage() {
                 </div>
                 <div><span className="text-slate-500 font-medium">Jabatan:</span> <strong>{previewRecord.jabatan || previewRecord.kategori_peserta || 'Magang'}</strong></div>
                 <div><span className="text-slate-500 font-medium">Tanggal Pemeriksaan:</span> <strong>{formatDate(previewRecord.tanggal_pemeriksaan)}</strong></div>
-                <div><span className="text-slate-500 font-medium">Pelaksana:</span> <strong>{previewRecord.created_by_role === 'karyawan' ? 'Pemeriksaan Mandiri Karyawan' : (previewRecord.nama_rs || 'Klinik Pratama PTPN 3')}</strong></div>
+                <div><span className="text-slate-500 font-medium">Pelaksana:</span> <strong>{previewRecord.created_by_role === 'karyawan' ? 'Pemeriksaan Mandiri Karyawan' : previewRecord.created_by_role === 'klinik' ? 'Inhouse Clinic' : (previewRecord.nama_rs || '-')}</strong></div>
               </div>
 
               {/* Physical Vitals Summary */}

@@ -46,6 +46,7 @@ import { HealthTrendChart } from '@/components/mcu/HealthTrendChart';
 import { getRecordTimestamp } from '@/services/mcuService';
 import { DocumentPreviewModal } from '@/components/common/DocumentPreviewModal';
 import { generateSuratRujukanDataUrl } from '@/utils/rujukanGenerator';
+import { SessionHistorySelector } from '@/components/mcu/SessionHistorySelector';
 
 function formatDate(dateStr: string | null | undefined, includeTime = false, customTime?: string | null): string {
   if (!dateStr) return '-';
@@ -968,97 +969,17 @@ function AdminDetailMcuContent() {
         </div>
 
         {/* ==================================================== */}
-        {/* SECTION 2: BOTTOM LONG HORIZONTAL SESSION ACCORDION */}
         {/* ==================================================== */}
-        <div className="space-y-4 pt-4 border-t border-slate-200">
-          <div>
-            <h2 className="text-lg font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
-              <FileText className="w-5 h-5 text-[#005930]" />
-              <span>Riwayat Hasil Sesi Pemeriksaan MCU Karyawan</span>
-            </h2>
-            <p className="text-xs text-slate-500 font-medium mt-0.5">
-              Pilih atau klik sesi MCU di bawah ini untuk melihat detail keluhan, diagnosa, konsul, anjuran, saran, serta dokumen hasil pemeriksaan.
-            </p>
-          </div>
-
-          {/* Session Selector Scroll Container */}
-          <div className="flex items-center gap-3">
-            {patientHistory.length > 3 && (
-              <button
-                type="button"
-                onClick={() => scrollSessions('left')}
-                className="shrink-0 w-9 h-9 rounded-full bg-white border border-slate-300 text-slate-700 shadow-sm hover:bg-[#005930] hover:text-white flex items-center justify-center transition cursor-pointer"
-                title="Geser ke Kiri"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-            )}
-
-            <div
-              ref={scrollContainerRef}
-              className="flex-1 min-w-0 flex overflow-x-auto gap-4 pb-1 pt-1 scroll-smooth snap-x snap-mandatory no-scrollbar"
-              style={{ scrollbarWidth: 'none' }}
-            >
-              {patientHistory.map((sRec) => {
-                const sKey = `${sRec.created_by_role}-${sRec.id}`;
-                const isActive = sKey === activeSessionKey;
-                const isMandiri = sRec.created_by_role === 'karyawan' || (sRec.nama_dokter && sRec.nama_dokter.toLowerCase().includes('mandiri')) || (sRec.diagnosa && sRec.diagnosa.toLowerCase().includes('mandiri'));
-                const sRoleLabel = isMandiri ? 'Pemeriksaan Mandiri' : (sRec.created_by_role === 'admin' ? 'Admin' : 'Klinik');
-                const sTitle = isMandiri
-                  ? `Hasil MCU Mandiri ${formatMonthYear(sRec.tanggal_pemeriksaan)}`
-                  : `Hasil ${sRec.created_by_role === 'admin' ? 'MCU' : 'Mini MCU'} ${formatMonthYear(sRec.tanggal_pemeriksaan)}`;
-                const sDate = formatDate(sRec.tanggal_pemeriksaan);
-                const sStatus = sRec.status_kebugaran || sRec.kesimpulan || 'Fit for Duty';
-
-                return (
-                  <button
-                    key={sKey}
-                    type="button"
-                    onClick={() => setActiveSessionKey(sKey)}
-                    className={`shrink-0 w-full sm:w-[calc(33.3333%-0.67rem)] snap-start text-left p-4 rounded-xl border transition-all duration-200 cursor-pointer flex items-center justify-between gap-3 ${isActive
-                        ? 'bg-[#005930] border-[#005930] text-white ring-2 ring-emerald-600 shadow-md'
-                        : 'bg-white border-slate-200 text-slate-900 hover:border-emerald-500 hover:bg-emerald-50/40 shadow-xs'
-                      }`}
-                  >
-                    <div className="space-y-1 min-w-0">
-                      <p className={`text-xs font-bold truncate ${isActive ? 'text-white' : 'text-slate-900'}`}>{sTitle}</p>
-                      <span
-                        className={`inline-block text-[10px] font-semibold px-2 py-0.5 rounded-full ${isActive
-                            ? 'bg-emerald-800 text-emerald-100'
-                            : 'bg-slate-100 text-slate-700'
-                          }`}
-                      >
-                        {sRoleLabel}
-                      </span>
-                      <p className={`text-[11px] flex items-center gap-1 ${isActive ? 'text-emerald-100' : 'text-slate-500'}`}>
-                        <Calendar className="w-3 h-3" />
-                        <span>Tgl: {sDate}</span>
-                      </p>
-                    </div>
-
-                    <span
-                      className={`shrink-0 text-[10px] font-black px-2.5 py-1 rounded-full ${isActive ? 'bg-white text-[#005930]' : getStatusBadgeStyle(sStatus)
-                        }`}
-                    >
-                      {sStatus}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-
-            {patientHistory.length > 3 && (
-              <button
-                type="button"
-                onClick={() => scrollSessions('right')}
-                className="shrink-0 w-9 h-9 rounded-full bg-white border border-slate-300 text-slate-700 shadow-sm hover:bg-[#005930] hover:text-white flex items-center justify-center transition cursor-pointer"
-                title="Geser ke Kanan"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            )}
-          </div>
-        </div>
+        {/* SECTION 2: SESSION SELECTOR (CARDS / TABLE VIEW)    */}
+        {/* ==================================================== */}
+        <SessionHistorySelector
+          sessions={patientHistory}
+          activeSessionKey={activeSessionKey}
+          onSelectSession={setActiveSessionKey}
+          role="admin"
+          title="Riwayat Hasil Sesi Pemeriksaan MCU Karyawan"
+          subtitle="Pilih atau klik sesi MCU di bawah ini untuk melihat detail keluhan, diagnosa, konsul, anjuran, saran, serta dokumen hasil pemeriksaan."
+        />
 
         {/* Detailed Session Display Panel */}
         <div className="space-y-4 pt-1">
@@ -1083,7 +1004,7 @@ function AdminDetailMcuContent() {
                   <div className="flex items-center gap-1.5">
                     <span className="text-slate-500 font-medium">Instansi Pemeriksa:</span>
                     <span className="font-black text-[#005930] bg-white px-3 py-1 rounded-xl border border-slate-200 shadow-2xs">
-                      {rec.nama_rs || rs || 'RS Siloam'}
+                      {rs || '-'}
                     </span>
                   </div>
                   <div className="flex items-center gap-1.5">
@@ -1101,7 +1022,7 @@ function AdminDetailMcuContent() {
                   <div className="flex items-center gap-1.5">
                     <span className="text-slate-500 font-medium">Tempat / Klinik:</span>
                     <span className="font-black text-[#005930] bg-white px-3 py-1 rounded-xl border border-slate-200 shadow-2xs">
-                      {rec.nama_rs || rs || 'Klinik Pratama PTPN'}
+                      {rs || '-'}
                     </span>
                   </div>
                   <div className="flex items-center gap-1.5">
@@ -1116,6 +1037,12 @@ function AdminDetailMcuContent() {
               {/* Sesi Klinik: Dokter Pemeriksa, Perawat / Asisten, dan Jam */}
               {rec.created_by_role === 'klinik' && !isMandiri && (
                 <>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-slate-500 font-medium">Klinik Pemeriksa:</span>
+                    <span className="font-black text-[#005930] bg-white px-3 py-1 rounded-xl border border-slate-200 shadow-2xs">
+                      Inhouse Clinic
+                    </span>
+                  </div>
                   <div className="flex items-center gap-1.5">
                     <span className="text-slate-500 font-medium">Dokter Pemeriksa:</span>
                     <span className="font-black text-[#005930] bg-white px-3 py-1 rounded-xl border border-slate-200 shadow-2xs">
