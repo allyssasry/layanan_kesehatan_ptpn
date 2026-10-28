@@ -14,6 +14,7 @@ export const TABLES = {
   NOTIFICATIONS: 'mcu_app_notifications',
   OBATS: 'mcu_obats',
   SUGGESTIONS: 'mcu_medical_suggestions',
+  DONOR_DARAH: 'mcu_donor_darah',
 } as const;
 
 // Cache nama tabel yang aktif di Supabase

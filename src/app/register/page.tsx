@@ -195,8 +195,8 @@ export default function RegisterPage() {
               >
                 <option value="" disabled>Pilih Peran Akun...</option>
                 <option value="karyawan">Karyawan</option>
-                <option value="admin">Admin</option>
                 <option value="klinik">Klinik</option>
+                <option value="admin">Admin</option>
               </select>
               <ChevronDown className="w-4 h-4 text-slate-500 absolute right-4 pointer-events-none" />
             </div>

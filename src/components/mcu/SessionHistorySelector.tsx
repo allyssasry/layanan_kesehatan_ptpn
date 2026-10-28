@@ -93,7 +93,17 @@ function formatMonthYear(dateStr: string | null | undefined): string {
   }
 }
 
+function isDonorSession(sRec: SessionHistoryItem): boolean {
+  return Boolean(
+    sRec.created_by_role === 'donor' ||
+    sRec.jenis_donor ||
+    sRec.penyelenggara_donor ||
+    (sRec.id && String(sRec.id).startsWith('donor-'))
+  );
+}
+
 function isSessionMandiri(sRec: SessionHistoryItem): boolean {
+  if (isDonorSession(sRec)) return false;
   return Boolean(
     sRec.created_by_role === 'karyawan' ||
     sRec.vitals_updated_by_role === 'karyawan' ||
@@ -104,7 +114,10 @@ function isSessionMandiri(sRec: SessionHistoryItem): boolean {
 }
 
 function getSessionTitle(sRec: SessionHistoryItem, isMandiri: boolean): string {
-  const monthYearStr = formatMonthYear(sRec.tanggal_pemeriksaan);
+  const monthYearStr = formatMonthYear(sRec.tanggal_pemeriksaan || sRec.tanggal_donor);
+  if (isDonorSession(sRec)) {
+    return `Hasil Donor Darah ${monthYearStr}`;
+  }
   if (isMandiri) {
     return `Hasil MCU Mandiri ${monthYearStr}`;
   }
@@ -115,6 +128,9 @@ function getSessionTitle(sRec: SessionHistoryItem, isMandiri: boolean): string {
 }
 
 function getRoleLabel(sRec: SessionHistoryItem, isMandiri: boolean): string {
+  if (isDonorSession(sRec)) {
+    return 'Donor Darah';
+  }
   if (isMandiri) return 'Pemeriksaan Mandiri';
   if (sRec.created_by_role === 'klinik') return 'Klinik';
   return 'Admin';
@@ -133,6 +149,10 @@ function getStatusBadgeStyle(status?: string | null): string {
 }
 
 function getVitalsSummary(sRec: SessionHistoryItem): string {
+  if (isDonorSession(sRec)) {
+    const gol = sRec.golongan_darah ? `Gol: ${sRec.golongan_darah}` : '';
+    return gol || 'Donor Darah';
+  }
   const tensi = sRec.tensi || (sRec.vitals as any)?.tensi || (
     (sRec.vitals as any)?.tensi_sistolik && (sRec.vitals as any)?.tensi_diastolik
       ? `${(sRec.vitals as any).tensi_sistolik}/${(sRec.vitals as any).tensi_diastolik}`
@@ -147,6 +167,9 @@ function getVitalsSummary(sRec: SessionHistoryItem): string {
 }
 
 export function getSessionInstansi(sRec: SessionHistoryItem): string {
+  if (isDonorSession(sRec)) {
+    return sRec.lokasi_donor || 'Klinik Pratama PTPN';
+  }
   // Sesi pemeriksaan dari klinik selalu Inhouse Clinic
   if (sRec.created_by_role === 'klinik') {
     return 'Inhouse Clinic';
@@ -176,6 +199,9 @@ export function SessionHistorySelector({
 
   const resolveKey = (sRec: SessionHistoryItem): string => {
     if (getKey) return getKey(sRec);
+    if (isDonorSession(sRec)) {
+      return `donor-${sRec.id}`;
+    }
     const isMandiri = isSessionMandiri(sRec);
     const roleKey = isMandiri ? 'karyawan' : (sRec.created_by_role || 'admin');
     return `${roleKey}-${sRec.id}`;
@@ -199,13 +225,15 @@ export function SessionHistorySelector({
       const isMandiri = isSessionMandiri(sRec);
       const titleStr = getSessionTitle(sRec, isMandiri).toLowerCase();
       const roleStr = getRoleLabel(sRec, isMandiri).toLowerCase();
-      const dateStr = formatDate(sRec.tanggal_pemeriksaan).toLowerCase();
-      const statusStr = (sRec.status_kebugaran || sRec.kesimpulan || '').toLowerCase();
+      const dateStr = formatDate(sRec.tanggal_pemeriksaan || sRec.tanggal_donor).toLowerCase();
+      const statusStr = (sRec.status_kebugaran || sRec.kesimpulan || sRec.status || '').toLowerCase();
       const instansiRaw = getSessionInstansi(sRec);
       const instansiStr = instansiRaw !== '-' ? instansiRaw.toLowerCase() : '';
       const diagnosaStr = (sRec.diagnosa || '').toLowerCase();
       const keluhanStr = (sRec.keluhan || '').toLowerCase();
       const tensiStr = String(sRec.tensi || '').toLowerCase();
+      const lokStr = String(sRec.lokasi_donor || '').toLowerCase();
+      const golStr = String(sRec.golongan_darah || '').toLowerCase();
 
       return (
         titleStr.includes(q) ||
@@ -215,7 +243,9 @@ export function SessionHistorySelector({
         instansiStr.includes(q) ||
         diagnosaStr.includes(q) ||
         keluhanStr.includes(q) ||
-        tensiStr.includes(q)
+        tensiStr.includes(q) ||
+        lokStr.includes(q) ||
+        golStr.includes(q)
       );
     });
   }, [sessions, searchQuery]);
@@ -292,8 +322,8 @@ export function SessionHistorySelector({
               const isMandiri = isSessionMandiri(sRec);
               const sRoleLabel = getRoleLabel(sRec, isMandiri);
               const sTitle = getSessionTitle(sRec, isMandiri);
-              const sDate = formatDate(sRec.tanggal_pemeriksaan);
-              const sStatus = sRec.status_kebugaran || sRec.kesimpulan || 'Fit for Duty';
+              const sDate = formatDate(sRec.tanggal_pemeriksaan || sRec.tanggal_donor);
+              const sStatus = sRec.status_kebugaran || sRec.kesimpulan || sRec.status || 'Fit for Duty';
 
               return (
                 <button
@@ -424,8 +454,8 @@ export function SessionHistorySelector({
                     const isMandiri = isSessionMandiri(sRec);
                     const sRoleLabel = getRoleLabel(sRec, isMandiri);
                     const sTitle = getSessionTitle(sRec, isMandiri);
-                    const sDate = formatDate(sRec.tanggal_pemeriksaan);
-                    const sStatus = sRec.status_kebugaran || sRec.kesimpulan || 'Fit for Duty';
+                    const sDate = formatDate(sRec.tanggal_pemeriksaan || sRec.tanggal_donor);
+                    const sStatus = sRec.status_kebugaran || sRec.kesimpulan || sRec.status || 'Fit for Duty';
                     const instansiName = getSessionInstansi(sRec);
                     const vitalsSummary = getVitalsSummary(sRec);
 

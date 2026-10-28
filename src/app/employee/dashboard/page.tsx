@@ -11,6 +11,7 @@ import { HealthTrendChart } from '@/components/mcu/HealthTrendChart';
 import { getRecordTimestamp } from '@/services/mcuService';
 import { DocumentPreviewModal } from '@/components/common/DocumentPreviewModal';
 import { SessionHistorySelector } from '@/components/mcu/SessionHistorySelector';
+import { DonorSessionDetailCard } from '@/components/donor/DonorSessionDetailCard';
 import * as XLSX from 'xlsx';
 import {
   Upload,
@@ -228,12 +229,17 @@ const NORMAL_ASAM_URAT = 7.0;
 
 export default function EmployeeDashboardPage() {
   const { user } = useAuth();
-  const { mcuRecords, miniMcuRecords, karyawanRecords, isLoading } = useMcu();
+  const { mcuRecords, miniMcuRecords, karyawanRecords, donorRecords, isLoading } = useMcu();
   const router = useRouter();
 
   const [activeKey, setActiveKey] = useState<string>('');
   const [hoveredPoint, setHoveredPoint] = useState<number | null>(null);
+  const [mounted, setMounted] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Modal states
   const [previewModalOpen, setPreviewModalOpen] = useState(false);
@@ -255,7 +261,7 @@ export default function EmployeeDashboardPage() {
     const uName = (user.name || '').trim().toLowerCase();
     const uNik = (user.nik || '').trim().toLowerCase();
 
-    const combined: Array<McuRecord & { created_by_role: string }> = [
+    const combined: Array<any> = [
       ...mcuRecords.map((r) => {
         const isKlinik = r.created_by_role === 'klinik';
         const role = isKlinik ? 'klinik' : 'admin';
@@ -278,6 +284,25 @@ export default function EmployeeDashboardPage() {
           faktor_risiko: r.faktor_risiko || 'Tidak memiliki faktor risiko',
           penyakit: Array.isArray(r.penyakit) ? r.penyakit : [],
           anjuran: r.anjuran || r.saran || 'Pemeriksaan Mandiri',
+          intervensi: [],
+          obat: [],
+        };
+      }),
+      ...(donorRecords || [])
+        .filter((r) => r.entitas !== 'Bukan Entitas')
+        .map((r) => {
+          return {
+          ...r,
+          created_by_role: 'donor',
+          tanggal_pemeriksaan: r.tanggal_donor,
+          kesimpulan: r.status || 'Donor Darah Berhasil',
+          status_kebugaran: r.status || 'Fit for Duty',
+          diagnosa: 'Donor Darah',
+          keluhan: r.keterangan || 'Tidak ada keluhan saat mendonorkan darah',
+          faktor_risiko: 'Memenuhi syarat pendonor sehat',
+          penyakit: ['Donor Darah'],
+          anjuran: 'Perbanyak minum air putih dan istirahat yang cukup pasca donor darah.',
+          tindak_lanjut: 'Dapat melakukan donor darah kembali setelah jeda 60 hari.',
           intervensi: [],
           obat: [],
         };
@@ -897,13 +922,16 @@ export default function EmployeeDashboardPage() {
                   <div className="border-t border-slate-200/80 my-4" />
 
                   {/* Vitals Last Updated Date Badge */}
-                  <div className="flex items-center justify-between text-[11px] font-bold text-slate-600 bg-white p-2.5 rounded-xl border border-slate-200 shadow-2xs mb-3">
+                  <div
+                    className="flex items-center justify-between text-[11px] font-bold text-slate-600 bg-white p-2.5 rounded-xl border border-slate-200 shadow-2xs mb-3"
+                    suppressHydrationWarning
+                  >
                     <span className="flex items-center gap-1.5 text-emerald-800">
                       <Clock className="w-3.5 h-3.5 text-emerald-700" />
                       <span>Terakhir Diperbarui:</span>
                     </span>
-                    <span className="text-slate-900 font-extrabold">
-                      {lastUpdatedFormatted}
+                    <span className="text-slate-900 font-extrabold" suppressHydrationWarning>
+                      {mounted ? lastUpdatedFormatted : '-'}
                     </span>
                   </div>
 
@@ -963,44 +991,7 @@ export default function EmployeeDashboardPage() {
                   </div>
                 </div>
 
-                {/* Profile Vitals & Chart PDF Banner */}
-                <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between gap-3 shadow-2xs">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="w-8 h-8 rounded-lg bg-emerald-800 text-white font-black text-[10px] flex items-center justify-center shrink-0">
-                      PDF
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-xs font-extrabold text-emerald-950 truncate">
-                        Ringkasan_Vitals_&amp;_Grafik_{safeName}.pdf
-                      </p>
-                      <p className="text-[10px] font-bold text-emerald-700 truncate">Informasi Karyawan, Tensi, Vitals &amp; Grafik Angka</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setPreviewRecord(latestRecord);
-                        setPreviewModalOpen(true);
-                      }}
-                      className="px-2.5 py-1 bg-[#055E38] hover:bg-emerald-900 text-white font-bold text-[11px] rounded-lg transition cursor-pointer"
-                      title="Buka Ringkasan Vitals & Grafik"
-                    >
-                      Buka
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setPreviewRecord(latestRecord);
-                        setPreviewModalOpen(true);
-                      }}
-                      className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-800 font-bold text-[11px] border border-slate-200 rounded-lg transition cursor-pointer"
-                      title="Unduh Ringkasan Vitals & Grafik"
-                    >
-                      Unduh
-                    </button>
-                  </div>
-                </div>
+
               </div>
 
               {/* RIGHT COLUMN (7 Cols): Dynamic Trend Charts with Normal Threshold Lines */}
@@ -1021,6 +1012,9 @@ export default function EmployeeDashboardPage() {
               title="Riwayat Sesi Pemeriksaan Kesehatan & MCU Karyawan"
               subtitle="Klik atau pilih kartu atau baris tabel di bawah ini untuk menampilkan rincian keluhan, diagnosa, konsul, anjuran, saran, serta dokumen lampiran Surat Sakit."
               getKey={(sessionRec) => {
+                if (sessionRec.created_by_role === 'donor') {
+                  return `donor-${sessionRec.id}`;
+                }
                 const isMandiri = sessionRec.created_by_role === 'karyawan' ||
                   sessionRec.vitals_updated_by_role === 'karyawan' ||
                   (sessionRec.nama_dokter && sessionRec.nama_dokter.toLowerCase().includes('mandiri')) ||
@@ -1035,7 +1029,9 @@ export default function EmployeeDashboardPage() {
               {/* ==================================================== */}
               {activeRecord && (
                 <div className="space-y-6 pt-2">
-                  {activeRecord.created_by_role === 'klinik' ? (
+                  {activeRecord.created_by_role === 'donor' ? (
+                    <DonorSessionDetailCard record={activeRecord} />
+                  ) : activeRecord.created_by_role === 'klinik' ? (
                     // KLINIK RECORD PANEL (MATCHING SCREENSHOT LAYOUT & FALLBACKS)
                     <div className="space-y-4">
                       {/* Top Petugas Medis Pemeriksa Klinik Banner */}

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { McuRecord, MiniMcuRecord, AppNotification, Obat } from '../types/mcu';
+import { McuRecord, MiniMcuRecord, AppNotification, Obat, DonorDarahRecord } from '../types/mcu';
 import { getSupabaseClient } from '@/lib/supabase';
 import {
   fallbackMcuRecords,
@@ -22,22 +22,34 @@ import {
   fetchKaryawanRecordsFromSupabase,
   buildContextualNotifications,
 } from '@/services/mcuService';
+import {
+  initialDonorRecords,
+  fetchDonorRecordsFromSupabase,
+  insertDonorRecordToSupabase,
+  updateDonorRecordInSupabase,
+  deleteDonorRecordFromSupabase,
+} from '@/services/donorService';
 import { useAuth } from './AuthContext';
 
 interface McuContextType {
   mcuRecords: McuRecord[];
   miniMcuRecords: MiniMcuRecord[];
   karyawanRecords: any[];
+  donorRecords: DonorDarahRecord[];
   notifications: AppNotification[];
   obats: Obat[];
   isLoading: boolean;
   refreshData: () => Promise<void>;
+  refreshDonorData: () => Promise<void>;
   addMcuRecord: (record: Omit<McuRecord, 'id' | 'created_at' | 'updated_at'>) => Promise<number>;
   updateMcuRecord: (id: number, data: Partial<McuRecord>) => Promise<void>;
   deleteMcuRecord: (id: number) => Promise<void>;
   addMiniMcuRecord: (record: Omit<MiniMcuRecord, 'id' | 'created_at' | 'updated_at'>) => Promise<number>;
   updateMiniMcuRecord: (id: number, data: Partial<MiniMcuRecord>) => Promise<void>;
   deleteMiniMcuRecord: (id: number) => Promise<void>;
+  addDonorRecord: (record: Omit<DonorDarahRecord, 'id' | 'created_at' | 'updated_at'>) => Promise<DonorDarahRecord>;
+  updateDonorRecord: (id: number, data: Partial<DonorDarahRecord>) => Promise<DonorDarahRecord | null>;
+  deleteDonorRecord: (id: number) => Promise<boolean>;
   markNotificationRead: (id: number) => Promise<void>;
   markAllNotificationsRead: () => Promise<void>;
   unreadCount: number;
@@ -50,6 +62,7 @@ export const McuProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [mcuRecords, setMcuRecords] = useState<McuRecord[]>(fallbackMcuRecords);
   const [miniMcuRecords, setMiniMcuRecords] = useState<MiniMcuRecord[]>(fallbackMiniRecords);
   const [karyawanRecords, setKaryawanRecords] = useState<any[]>([]);
+  const [donorRecords, setDonorRecords] = useState<DonorDarahRecord[]>(initialDonorRecords);
   const [notifications, setNotifications] = useState<AppNotification[]>(fallbackNotifications);
   const [obats, setObats] = useState<Obat[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -58,16 +71,18 @@ export const McuProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const refreshData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [mcus, minis, karys, dbNotifs, obatList] = await Promise.all([
+      const [mcus, minis, karys, dbNotifs, obatList, donors] = await Promise.all([
         fetchMcuRecordsFromSupabase(),
         fetchMiniMcuRecordsFromSupabase(),
         fetchKaryawanRecordsFromSupabase(),
         fetchNotificationsFromSupabase(user ? { id: user.id, role: user.role } : undefined),
         fetchMasterObats(),
+        fetchDonorRecordsFromSupabase(),
       ]);
       setMcuRecords(mcus);
       setMiniMcuRecords(minis);
       setKaryawanRecords(karys);
+      setDonorRecords(donors);
       const contextualNotifs = buildContextualNotifications(user, mcus, minis, dbNotifs);
       setNotifications(contextualNotifs);
       setObats(obatList);
@@ -206,6 +221,55 @@ export const McuProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     await markAllNotificationsReadInSupabase(user ? { id: user.id, role: user.role } : undefined);
   };
 
+  // Donor Darah CRUD Handlers
+  const refreshDonorData = useCallback(async () => {
+    try {
+      const records = await fetchDonorRecordsFromSupabase();
+      setDonorRecords(records);
+    } catch (err) {
+      console.warn('Gagal refreshDonorData:', err);
+    }
+  }, []);
+
+  const addDonorRecord = async (record: Omit<DonorDarahRecord, 'id' | 'created_at' | 'updated_at'>) => {
+    const created = await insertDonorRecordToSupabase(record);
+    setDonorRecords((prev) => [created, ...prev.filter((r) => r.id !== created.id)]);
+    return created;
+  };
+
+  const updateDonorRecord = async (id: number, data: Partial<DonorDarahRecord>) => {
+    const updated = await updateDonorRecordInSupabase(id, data);
+    if (updated) {
+      const targetNik = updated.nik || data.nik;
+      setDonorRecords((prev) =>
+        prev.map((r) => {
+          if (r.id === id) {
+            return { ...r, ...updated };
+          }
+          if (targetNik && r.nik === targetNik) {
+            return {
+              ...r,
+              entitas: updated.entitas || r.entitas,
+              divisi: updated.divisi !== undefined ? updated.divisi : r.divisi,
+              jabatan: updated.jabatan !== undefined ? updated.jabatan : r.jabatan,
+              foto: updated.foto !== undefined ? updated.foto : r.foto,
+            };
+          }
+          return r;
+        })
+      );
+    }
+    return updated;
+  };
+
+  const deleteDonorRecord = async (id: number) => {
+    const success = await deleteDonorRecordFromSupabase(id);
+    if (success) {
+      setDonorRecords((prev) => prev.filter((r) => r.id !== id));
+    }
+    return success;
+  };
+
   const unreadCount = notifications.filter((n) => !n.is_read && !n.read).length;
 
   return (
@@ -214,16 +278,21 @@ export const McuProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         mcuRecords,
         miniMcuRecords,
         karyawanRecords,
+        donorRecords,
         notifications,
         obats,
         isLoading,
         refreshData,
+        refreshDonorData,
         addMcuRecord,
         updateMcuRecord,
         deleteMcuRecord,
         addMiniMcuRecord,
         updateMiniMcuRecord,
         deleteMiniMcuRecord,
+        addDonorRecord,
+        updateDonorRecord,
+        deleteDonorRecord,
         markNotificationRead,
         markAllNotificationsRead,
         unreadCount,

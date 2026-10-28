@@ -6,6 +6,7 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { useAuth } from '@/context/AuthContext';
 import { useMcu } from '@/context/McuContext';
 import { HealthTrendChart } from '@/components/mcu/HealthTrendChart';
+import { PatientDonorHistorySection } from '@/components/donor/PatientDonorHistorySection';
 import { getRecordTimestamp } from '@/services/mcuService';
 import {
   Download,
@@ -248,6 +249,17 @@ export default function EmployeeHasilMcuPage() {
               </div>
             </div>
           </>
+        )}
+
+        {/* Riwayat Donor Darah Karyawan */}
+        {!isLoading && (
+          <div className="pt-2">
+            <PatientDonorHistorySection
+              nik={displayNik}
+              nama={displayName}
+              role="karyawan"
+            />
+          </div>
         )}
 
       </div>

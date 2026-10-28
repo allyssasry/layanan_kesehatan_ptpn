@@ -47,6 +47,7 @@ import { getRecordTimestamp } from '@/services/mcuService';
 import { DocumentPreviewModal } from '@/components/common/DocumentPreviewModal';
 import { generateSuratRujukanDataUrl } from '@/utils/rujukanGenerator';
 import { SessionHistorySelector } from '@/components/mcu/SessionHistorySelector';
+import { DonorSessionDetailCard } from '@/components/donor/DonorSessionDetailCard';
 
 function formatDate(dateStr: string | null | undefined, includeTime = false, customTime?: string | null): string {
   if (!dateStr) return '-';
@@ -305,7 +306,7 @@ function AdminDetailMcuContent() {
   const params = useParams();
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { mcuRecords, miniMcuRecords, karyawanRecords, updateMcuRecord } = useMcu();
+  const { mcuRecords, miniMcuRecords, karyawanRecords, donorRecords, updateMcuRecord } = useMcu();
   const [mounted, setMounted] = useState(false);
 
   // Form states for "Perbarui Status Tindak Lanjut Pasien"
@@ -423,6 +424,15 @@ function AdminDetailMcuContent() {
       } else if (sRole === 'karyawan') {
         const foundKary = (karyawanRecords || []).find((r: any) => r.id === sId);
         if (foundKary) return { ...foundKary, created_by_role: 'karyawan' as const };
+      } else if (sRole === 'donor') {
+        const foundDonor = (donorRecords || []).find((r: any) => r.id === sId);
+        if (foundDonor) {
+          return {
+            ...foundDonor,
+            created_by_role: 'donor' as const,
+            tanggal_pemeriksaan: foundDonor.tanggal_donor,
+          };
+        }
       }
     }
 
@@ -432,6 +442,15 @@ function AdminDetailMcuContent() {
         if (foundMini) return { ...foundMini, created_by_role: 'klinik' as const };
         const foundMcu = mcuRecords.find((r) => r.id === recordId);
         if (foundMcu) return { ...foundMcu, created_by_role: 'admin' as const };
+      } else if (typeParam === 'donor') {
+        const foundDonor = (donorRecords || []).find((r: any) => r.id === recordId);
+        if (foundDonor) {
+          return {
+            ...foundDonor,
+            created_by_role: 'donor' as const,
+            tanggal_pemeriksaan: foundDonor.tanggal_donor,
+          };
+        }
       } else {
         const foundMcu = mcuRecords.find((r) => r.id === recordId);
         if (foundMcu) return { ...foundMcu, created_by_role: 'admin' as const };
@@ -450,8 +469,12 @@ function AdminDetailMcuContent() {
     if ((karyawanRecords || []).length > 0) {
       return { ...karyawanRecords[0], created_by_role: 'karyawan' as const };
     }
+    if ((donorRecords || []).length > 0) {
+      const d = donorRecords[0];
+      return { ...d, created_by_role: 'donor' as const, tanggal_pemeriksaan: d.tanggal_donor };
+    }
     return null;
-  }, [sessionParam, recordId, typeParam, mcuRecords, miniMcuRecords, karyawanRecords]);
+  }, [sessionParam, recordId, typeParam, mcuRecords, miniMcuRecords, karyawanRecords, donorRecords]);
 
   // Find all history records for this patient
   const patientHistory = useMemo(() => {
@@ -487,7 +510,26 @@ function AdminDetailMcuContent() {
         intervensi: Array.isArray(r.intervensi) ? r.intervensi : [],
       }));
 
-    const combined = [...matchedMcu, ...matchedMini, ...matchedKaryawan];
+    const matchedDonor = (donorRecords || [])
+      .filter(matchesPatient)
+      .map((r) => ({
+        ...r,
+        created_by_role: 'donor' as const,
+        tanggal_pemeriksaan: r.tanggal_donor,
+        kesimpulan: r.status || 'Donor Darah Berhasil',
+        status_kebugaran: r.status || 'Fit for Duty',
+        diagnosa: 'Donor Darah',
+        keluhan: r.keterangan || 'Tidak ada keluhan saat mendonorkan darah',
+        faktor_risiko: 'Memenuhi syarat pendonor sehat',
+        penyakit: ['Donor Darah'],
+        anjuran: 'Perbanyak minum air putih dan istirahat yang cukup pasca donor darah.',
+        tindak_lanjut: 'Dapat melakukan donor darah kembali setelah jeda 60 hari.',
+        instansi_pemeriksa: r.lokasi_donor || 'Klinik Pratama PTPN',
+        nama_rs: r.lokasi_donor || 'Klinik Pratama PTPN',
+        tensi: (r as any).tensi || '-',
+      }));
+
+    const combined = [...matchedMcu, ...matchedMini, ...matchedKaryawan, ...matchedDonor];
     if (combined.length === 0 && initialRecord) {
       combined.push(initialRecord);
     }
@@ -499,7 +541,7 @@ function AdminDetailMcuContent() {
       if (timeA !== timeB) return timeB - timeA;
       return (Number(b.id) || 0) - (Number(a.id) || 0);
     });
-  }, [initialRecord, mcuRecords, miniMcuRecords, karyawanRecords]);
+  }, [initialRecord, mcuRecords, miniMcuRecords, karyawanRecords, donorRecords]);
 
   // The latest overall examination record across ALL sources (Mandiri, Klinik, or Admin)
   const latestPatientRecord = useMemo(() => {
@@ -874,17 +916,22 @@ function AdminDetailMcuContent() {
               </div>
 
               {/* Last Updated Box */}
-              <div className="flex items-center justify-between text-[11px] font-semibold text-slate-600 bg-emerald-50/70 p-2.5 rounded-xl border border-emerald-200/70 shadow-2xs mb-3">
+              <div
+                className="flex items-center justify-between text-[11px] font-semibold text-slate-600 bg-emerald-50/70 p-2.5 rounded-xl border border-emerald-200/70 shadow-2xs mb-3"
+                suppressHydrationWarning
+              >
                 <span className="flex items-center gap-1.5 text-[#005930]">
                   <Clock className="w-3.5 h-3.5" />
                   <span>Terakhir Diperbarui:</span>
                 </span>
-                <span className="text-slate-900 font-extrabold">
-                  {formatDate(
-                    latestRec.tanggal_pemeriksaan,
-                    true,
-                    (latestRec as any).jam_pemeriksaan || (latestRec as any).jam_periksa || (latestRec as any).vitals_updated_at || (latestRec as any).created_at
-                  )}
+                <span className="text-slate-900 font-extrabold" suppressHydrationWarning>
+                  {mounted
+                    ? formatDate(
+                        latestRec.tanggal_pemeriksaan,
+                        true,
+                        (latestRec as any).jam_pemeriksaan || (latestRec as any).jam_periksa || (latestRec as any).vitals_updated_at || (latestRec as any).created_at
+                      )
+                    : formatDate(latestRec.tanggal_pemeriksaan, false)}
                 </span>
               </div>
 
@@ -930,36 +977,7 @@ function AdminDetailMcuContent() {
               </div>
             </div>
 
-            {/* Profile PDF Summary Card */}
-            <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between gap-3 shadow-2xs mt-2">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <div className="w-7 h-7 rounded-lg bg-[#005930] text-white font-black text-[10px] flex items-center justify-center shrink-0">
-                  PDF
-                </div>
-                <div className="min-w-0">
-                  <p className="text-xs font-bold text-[#005930] truncate">
-                    Ringkasan_Vitals_&amp;Grafik_{nama.replace(/[^A-Za-z0-9]/g, '_')}.pdf
-                  </p>
-                  <p className="text-[10px] font-semibold text-emerald-700">Informasi Karyawan, Tensi, Vitals &amp; Grafik Angka</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-1.5 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => alert(`Membuka Ringkasan Vitals PDF untuk ${nama}`)}
-                  className="px-2.5 py-1 bg-[#005930] hover:bg-[#004726] text-white font-bold text-[11px] rounded-md transition cursor-pointer"
-                >
-                  Buka
-                </button>
-                <button
-                  type="button"
-                  onClick={() => alert(`Mengunduh Ringkasan Vitals PDF untuk ${nama}`)}
-                  className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-800 font-bold text-[11px] border border-slate-200 rounded-md transition cursor-pointer"
-                >
-                  Unduh
-                </button>
-              </div>
-            </div>
+            
           </div>
 
           {/* RIGHT COLUMN (7 Cols): Dynamic Trend Charts */}
@@ -982,7 +1000,10 @@ function AdminDetailMcuContent() {
         />
 
         {/* Detailed Session Display Panel */}
-        <div className="space-y-4 pt-1">
+        {rec.created_by_role === 'donor' ? (
+          <DonorSessionDetailCard record={rec} />
+        ) : (
+          <div className="space-y-4 pt-1">
           {/* Info Tim Medis Pemeriksa / Instansi Sesuai Jenis Sesi */}
           <div className="p-4 bg-emerald-50/80 border border-emerald-200/80 rounded-2xl flex flex-wrap items-center justify-between gap-4 text-xs">
             <div className="flex items-center gap-2.5">
@@ -1697,6 +1718,7 @@ function AdminDetailMcuContent() {
             );
           })()}
         </div>
+        )}
 
         {/* ==================================================== */}
         {/* DOCUMENT PREVIEW MODAL (UNIVERSAL PDF, IMAGE, EXCEL) */}

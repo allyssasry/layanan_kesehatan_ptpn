@@ -9,6 +9,7 @@ import { generateSuratRujukanDataUrl } from '@/utils/rujukanGenerator';
 import { useMcu } from '@/context/McuContext';
 import { FitnessStatus } from '@/types/mcu';
 import { getWIBTime, getWIBDate } from '@/lib/dateUtils';
+import { uploadMedicalFile } from '@/lib/upload';
 import {
   Upload,
   User,
@@ -271,7 +272,7 @@ export default function ClinicTambahPemeriksaanFollowUpPage({
     return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
   };
 
-  const handleSuratSakitUpload = (file: File) => {
+  const handleSuratSakitUpload = async (file: File) => {
     if (!file) return;
     setFormData((prev) => ({ ...prev, file_surat_sakit_name: file.name }));
     setFileSuratSakitSize(formatFileSize(file.size));
@@ -280,6 +281,15 @@ export default function ClinicTambahPemeriksaanFollowUpPage({
       setFileSuratSakitUrl(e.target?.result as string);
     };
     reader.readAsDataURL(file);
+
+    try {
+      const res = await uploadMedicalFile(file, 'surat-sakit');
+      if (res && res.publicUrl) {
+        setFileSuratSakitUrl(res.publicUrl);
+      }
+    } catch (err) {
+      console.warn('Upload surat sakit note:', err);
+    }
   };
 
   const handleRemoveSuratSakit = () => {
@@ -289,7 +299,7 @@ export default function ClinicTambahPemeriksaanFollowUpPage({
     if (fileSuratSakitRef.current) fileSuratSakitRef.current.value = '';
   };
 
-  const handleSuratRujukanUpload = (file: File) => {
+  const handleSuratRujukanUpload = async (file: File) => {
     if (!file) return;
     setFormData((prev) => ({ ...prev, file_rujukan_name: file.name }));
     setFileRujukanSize(formatFileSize(file.size));
@@ -298,14 +308,21 @@ export default function ClinicTambahPemeriksaanFollowUpPage({
       setFileRujukanUrl(e.target?.result as string);
     };
     reader.readAsDataURL(file);
+
+    try {
+      const res = await uploadMedicalFile(file, 'rujukan');
+      if (res && res.publicUrl) {
+        setFileRujukanUrl(res.publicUrl);
+      }
+    } catch (err) {
+      console.warn('Upload rujukan note:', err);
+    }
   };
 
   const handleRemoveSuratRujukan = () => {
     setFormData((prev) => ({
       ...prev,
       file_rujukan_name: '',
-      nama_poli_rujukan: '',
-      rumah_sakit_rujukan: '',
     }));
     setFileRujukanUrl(null);
     setFileRujukanSize('');
@@ -313,89 +330,28 @@ export default function ClinicTambahPemeriksaanFollowUpPage({
   };
 
   const openDocPreview = (title: string, url: string | null, fileName: string) => {
-    let finalUrl = url;
-    const isRealBinary = Boolean(
-      finalUrl &&
-      (finalUrl.startsWith('data:') ||
-       finalUrl.startsWith('http://') ||
-       finalUrl.startsWith('https://') ||
-       finalUrl.startsWith('blob:') ||
-       finalUrl.startsWith('/'))
-    );
-
-    // If it's a Surat Rujukan and doesn't have a physical data URL yet, generate the official digital Surat Rujukan SVG!
-    if (!isRealBinary && title.toLowerCase().includes('rujukan')) {
-      finalUrl = generateSuratRujukanDataUrl({
-        id: recordId,
-        nama_lengkap: formData.nama_karyawan,
-        nik: formData.nik,
-        divisi: formData.divisi,
-        entitas: formData.entitas,
-        jabatan: formData.jabatan,
-        nomor_inhealth: formData.nomor_inhealth,
-        nomor_bpjs: formData.bpjs,
-        umur: formData.umur,
-        tanggal_pemeriksaan: formData.tanggal_pemeriksaan,
-        tanggal_pemeriksaan_lanjutan: formData.tanggal_rehabilitatif || formData.tanggal_kuratif || formData.tanggal_pemeriksaan,
-        rumah_sakit_rujukan: formData.rumah_sakit_rujukan || 'Rumah Sakit Rujukan PTPN',
-        nama_poli_rujukan: formData.nama_poli_rujukan || 'Poli Spesialis Rujukan Medis',
-        dokter_pemeriksa: formData.dokter || 'dr. Maya Andriana, Sp.Ok',
-        diagnosa: formData.diagnosa || formData.penyakit_text || 'Pemeriksaan Lanjutan & Evaluasi Medis',
-        catatan_intervensi: formData.catatan_intervensi || formData.catatan_rehabilitatif || formData.tindak_lanjut,
-        intervensi: selectedRehabilitatif.length > 0 ? selectedRehabilitatif : ['Monitoring Hasil Tindak Lanjut oleh Dokter Ahli'],
-        tensi: formData.tensi,
-        gula_darah: formData.gula_darah,
-        kolesterol: formData.kolesterol,
-        file_surat_rujukan_intervensi: fileName || formData.file_rujukan_name || 'Surat_Rujukan_Klinik.pdf',
-      });
-      // Keep fileRujukanUrl updated so it can be saved and downloaded immediately
-      setFileRujukanUrl(finalUrl);
+    if (!url) {
+      alert(`Berkas "${fileName || 'Dokumen'}" belum memiliki lampiran fisik yang diunggah.`);
+      return;
     }
 
     setPreviewDocModal({
       open: true,
       title,
-      url: finalUrl,
-      fileName: fileName || (title.toLowerCase().includes('rujukan') ? `Surat_Rujukan_${formData.nama_karyawan ? formData.nama_karyawan.replace(/\s+/g, '_') : 'Pasien'}.svg` : 'Dokumen_Medis'),
+      url,
+      fileName: fileName || 'Dokumen_Medis',
+      isImage: false,
     });
   };
 
   const downloadDocFile = (url: string | null, fileName: string) => {
-    let targetUrl = url;
-    if (!targetUrl || (!targetUrl.startsWith('data:') && !targetUrl.startsWith('http://') && !targetUrl.startsWith('https:') && !targetUrl.startsWith('blob:') && !targetUrl.startsWith('/'))) {
-      if (fileName.toLowerCase().includes('rujukan') || fileName.toLowerCase().includes('surat')) {
-        targetUrl = generateSuratRujukanDataUrl({
-          id: recordId,
-          nama_lengkap: formData.nama_karyawan,
-          nik: formData.nik,
-          divisi: formData.divisi,
-          entitas: formData.entitas,
-          jabatan: formData.jabatan,
-          nomor_inhealth: formData.nomor_inhealth,
-          nomor_bpjs: formData.bpjs,
-          umur: formData.umur,
-          tanggal_pemeriksaan: formData.tanggal_pemeriksaan,
-          tanggal_pemeriksaan_lanjutan: formData.tanggal_rehabilitatif || formData.tanggal_kuratif || formData.tanggal_pemeriksaan,
-          rumah_sakit_rujukan: formData.rumah_sakit_rujukan || 'Rumah Sakit Rujukan PTPN',
-          nama_poli_rujukan: formData.nama_poli_rujukan || 'Poli Spesialis Rujukan Medis',
-          dokter_pemeriksa: formData.dokter || 'dr. Maya Andriana, Sp.Ok',
-          diagnosa: formData.diagnosa || formData.penyakit_text || 'Pemeriksaan Lanjutan & Evaluasi Medis',
-          catatan_intervensi: formData.catatan_intervensi || formData.catatan_rehabilitatif || formData.tindak_lanjut,
-          intervensi: selectedRehabilitatif.length > 0 ? selectedRehabilitatif : ['Monitoring Hasil Tindak Lanjut oleh Dokter Ahli'],
-          tensi: formData.tensi,
-          gula_darah: formData.gula_darah,
-          kolesterol: formData.kolesterol,
-          file_surat_rujukan_intervensi: fileName || formData.file_rujukan_name || 'Surat_Rujukan_Klinik.pdf',
-        });
-        setFileRujukanUrl(targetUrl);
-      } else {
-        alert('Berkas belum memiliki data biner fisik untuk diunduh.');
-        return;
-      }
+    if (!url) {
+      alert('Berkas belum memiliki data fisik untuk diunduh.');
+      return;
     }
     const link = document.createElement('a');
-    link.href = targetUrl;
-    link.download = fileName || 'Dokumen_Medis';
+    link.href = url;
+    link.download = fileName || 'Surat_Rujukan';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -644,38 +600,9 @@ export default function ClinicTambahPemeriksaanFollowUpPage({
       (isRehabilitatifActive && formData.tanggal_rehabilitatif) ||
       null;
 
-    let finalFileRujukan = fileRujukanUrl;
-    let finalNamaRujukan = formData.file_rujukan_name;
-
-    // If user specified referral details or has rehabilitatif active, but no binary file uploaded manually:
-    if (!finalFileRujukan && (formData.nama_poli_rujukan || formData.rumah_sakit_rujukan || isRehabilitatifActive || formData.file_rujukan_name)) {
-      finalFileRujukan = generateSuratRujukanDataUrl({
-        id: recordId,
-        nama_lengkap: formData.nama_karyawan,
-        nik: formData.nik,
-        divisi: formData.divisi,
-        entitas: formData.entitas,
-        jabatan: formData.jabatan,
-        nomor_inhealth: formData.nomor_inhealth,
-        nomor_bpjs: formData.bpjs,
-        umur: formData.umur,
-        tanggal_pemeriksaan: formData.tanggal_pemeriksaan,
-        tanggal_pemeriksaan_lanjutan: formData.tanggal_rehabilitatif || formData.tanggal_kuratif || formData.tanggal_pemeriksaan,
-        rumah_sakit_rujukan: formData.rumah_sakit_rujukan || 'Rumah Sakit Rujukan PTPN',
-        nama_poli_rujukan: formData.nama_poli_rujukan || 'Poli Spesialis Rujukan Medis',
-        dokter_pemeriksa: formData.dokter || 'dr. Maya Andriana, Sp.Ok',
-        diagnosa: formData.diagnosa || formData.penyakit_text || 'Pemeriksaan Lanjutan & Evaluasi Medis',
-        catatan_intervensi: formData.catatan_intervensi || formData.catatan_rehabilitatif || formData.tindak_lanjut,
-        intervensi: selectedRehabilitatif.length > 0 ? selectedRehabilitatif : ['Monitoring Hasil Tindak Lanjut oleh Dokter Ahli'],
-        tensi: formData.tensi,
-        gula_darah: formData.gula_darah,
-        kolesterol: formData.kolesterol,
-        file_surat_rujukan_intervensi: formData.file_rujukan_name || 'Surat_Rujukan_Klinik.pdf',
-      });
-      if (!finalNamaRujukan) {
-        finalNamaRujukan = `Surat_Rujukan_${formData.nama_karyawan ? formData.nama_karyawan.replace(/\s+/g, '_') : 'Pasien'}.svg`;
-      }
-    }
+    // Surat Rujukan MURNI hanya dari file fisik yang benar-benar diunggah oleh klinik
+    const finalFileRujukan = (fileRujukanUrl && formData.file_rujukan_name) ? fileRujukanUrl : null;
+    const finalNamaRujukan = (fileRujukanUrl && formData.file_rujukan_name) ? formData.file_rujukan_name : null;
 
     const payload = {
       nama_karyawan: formData.nama_karyawan.trim() || 'Karyawan PTPN',

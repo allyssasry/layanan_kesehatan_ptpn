@@ -381,7 +381,7 @@ function RekapanMcuContent() {
               Hasil Rekapitulasi MCU
             </h1>
             <p className="text-sm font-medium text-slate-500 mt-1">
-              Daftar rekapitulasi data pemeriksaan MCU berkala karyawan PTPN 3
+              Daftar rekapitulasi data pemeriksaan MCU berkala karyawan PTPN Group
             </p>
           </div>
 
@@ -486,8 +486,8 @@ function RekapanMcuContent() {
               setCurrentPage(1);
             }}
             className={`px-4 py-2.5 rounded-xl text-xs font-extrabold flex items-center gap-2 transition cursor-pointer ${activeTab === 'mcu'
-                ? 'bg-emerald-800 text-white shadow-md ring-2 ring-emerald-600'
-                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              ? 'bg-emerald-800 text-white shadow-md ring-2 ring-emerald-600'
+              : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
               }`}
           >
             <FileText className="w-4 h-4" />
@@ -508,8 +508,8 @@ function RekapanMcuContent() {
               setCurrentPage(1);
             }}
             className={`px-4 py-2.5 rounded-xl text-xs font-extrabold flex items-center gap-2 transition cursor-pointer ${activeTab === 'mini_mcu'
-                ? 'bg-emerald-800 text-white shadow-md ring-2 ring-emerald-600'
-                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              ? 'bg-emerald-800 text-white shadow-md ring-2 ring-emerald-600'
+              : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
               }`}
           >
             <User className="w-4 h-4" />
@@ -857,8 +857,8 @@ function RekapanMcuContent() {
                     type="button"
                     onClick={() => setCurrentPage(page)}
                     className={`px-3 py-1 rounded-lg border text-xs font-bold transition cursor-pointer ${currentPage === page
-                        ? 'bg-emerald-800 border-emerald-800 text-white shadow-xs'
-                        : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100'
+                      ? 'bg-emerald-800 border-emerald-800 text-white shadow-xs'
+                      : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100'
                       }`}
                   >
                     {page}

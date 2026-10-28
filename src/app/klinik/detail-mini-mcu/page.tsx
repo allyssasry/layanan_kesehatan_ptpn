@@ -47,6 +47,7 @@ import { DocumentPreviewModal } from '@/components/common/DocumentPreviewModal';
 import { HealthTrendChart } from '@/components/mcu/HealthTrendChart';
 import { generateSuratRujukanDataUrl } from '@/utils/rujukanGenerator';
 import { SessionHistorySelector } from '@/components/mcu/SessionHistorySelector';
+import { DonorSessionDetailCard } from '@/components/donor/DonorSessionDetailCard';
 
 function formatDate(dateStr: string | null | undefined, includeTime = false, customTime?: string | null): string {
   if (!dateStr) return '-';
@@ -308,7 +309,7 @@ function DetailMiniMcuContent() {
   const idParam = searchParams.get('id') || (params?.id as string);
   const typeParam = searchParams.get('type');
   const sessionParam = searchParams.get('session');
-  const { miniMcuRecords, mcuRecords, karyawanRecords } = useMcu();
+  const { miniMcuRecords, mcuRecords, karyawanRecords, donorRecords } = useMcu();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -331,6 +332,15 @@ function DetailMiniMcuContent() {
       } else if (sRole === 'karyawan') {
         const foundKary = (karyawanRecords || []).find((r: any) => r.id === sId);
         if (foundKary) return { ...foundKary, created_by_role: 'karyawan' as const };
+      } else if (sRole === 'donor') {
+        const foundDonor = (donorRecords || []).find((r: any) => r.id === sId && r.entitas !== 'Bukan Entitas');
+        if (foundDonor) {
+          return {
+            ...foundDonor,
+            created_by_role: 'donor' as const,
+            tanggal_pemeriksaan: foundDonor.tanggal_donor,
+          };
+        }
       }
     }
 
@@ -340,6 +350,15 @@ function DetailMiniMcuContent() {
         if (foundMcu) return { ...foundMcu, created_by_role: 'admin' as const };
         const foundMini = miniMcuRecords.find((r) => r.id === recordId);
         if (foundMini) return { ...foundMini, created_by_role: 'klinik' as const };
+      } else if (typeParam === 'donor') {
+        const foundDonor = (donorRecords || []).find((r: any) => r.id === recordId && r.entitas !== 'Bukan Entitas');
+        if (foundDonor) {
+          return {
+            ...foundDonor,
+            created_by_role: 'donor' as const,
+            tanggal_pemeriksaan: foundDonor.tanggal_donor,
+          };
+        }
       } else {
         const foundMini = miniMcuRecords.find((r) => r.id === recordId);
         if (foundMini) return { ...foundMini, created_by_role: 'klinik' as const };
@@ -358,8 +377,12 @@ function DetailMiniMcuContent() {
     if ((karyawanRecords || []).length > 0) {
       return { ...karyawanRecords[0], created_by_role: 'karyawan' as const };
     }
+    if ((donorRecords || []).some((r) => r.entitas !== 'Bukan Entitas')) {
+      const d = donorRecords.find((r) => r.entitas !== 'Bukan Entitas')!;
+      return { ...d, created_by_role: 'donor' as const, tanggal_pemeriksaan: d.tanggal_donor };
+    }
     return null;
-  }, [sessionParam, recordId, typeParam, miniMcuRecords, mcuRecords, karyawanRecords]);
+  }, [sessionParam, recordId, typeParam, miniMcuRecords, mcuRecords, karyawanRecords, donorRecords]);
 
   // Find all history records for this patient
   const patientHistory = useMemo(() => {
@@ -395,7 +418,28 @@ function DetailMiniMcuContent() {
         intervensi: Array.isArray(r.intervensi) ? r.intervensi : [],
       }));
 
-    const combined = [...matchedMini, ...matchedMcu, ...matchedKaryawan];
+    // Data donor darah dari luar entitas (Bukan Entitas) TIDAK boleh masuk ke klinik
+    const matchedDonor = (donorRecords || [])
+      .filter(matchesPatient)
+      .filter((r) => r.entitas !== 'Bukan Entitas')
+      .map((r) => ({
+        ...r,
+        created_by_role: 'donor' as const,
+        tanggal_pemeriksaan: r.tanggal_donor,
+        kesimpulan: r.status || 'Donor Darah Berhasil',
+        status_kebugaran: r.status || 'Fit for Duty',
+        diagnosa: 'Donor Darah',
+        keluhan: r.keterangan || 'Tidak ada keluhan saat mendonorkan darah',
+        faktor_risiko: 'Memenuhi syarat pendonor sehat',
+        penyakit: ['Donor Darah'],
+        anjuran: 'Perbanyak minum air putih dan istirahat yang cukup pasca donor darah.',
+        tindak_lanjut: 'Dapat melakukan donor darah kembali setelah jeda 60 hari.',
+        instansi_pemeriksa: r.lokasi_donor || 'Klinik Pratama PTPN',
+        nama_rs: r.lokasi_donor || 'Klinik Pratama PTPN',
+        tensi: (r as any).tensi || '-',
+      }));
+
+    const combined = [...matchedMini, ...matchedMcu, ...matchedKaryawan, ...matchedDonor];
     if (combined.length === 0 && initialRecord) {
       combined.push(initialRecord);
     }
@@ -483,12 +527,11 @@ function DetailMiniMcuContent() {
     fileName: '',
   });
 
-  const openDocPreview = (title: string, url: string | null | undefined, fileName: string, patientData?: any) => {
+  const openDocPreview = (title: string, url: string | null | undefined, fileName: string) => {
     let finalUrl = url || null;
     if (!finalUrl || (!finalUrl.startsWith('data:') && !finalUrl.startsWith('http:') && !finalUrl.startsWith('https:') && !finalUrl.startsWith('blob:') && !finalUrl.startsWith('/'))) {
-      if (title.toLowerCase().includes('rujukan') || fileName.toLowerCase().includes('rujukan')) {
-        finalUrl = generateSuratRujukanDataUrl(patientData || activeRecord || initialRecord || {});
-      }
+      alert(`Berkas "${fileName || 'Dokumen'}" belum memiliki lampiran fisik yang diunggah.`);
+      return;
     }
     setPreviewDocModal({
       open: true,
@@ -887,7 +930,13 @@ function DetailMiniMcuContent() {
             )}
 
             <Link
-              href={`/klinik/edit-data/${rec.id}`}
+              href={
+                rec.created_by_role === 'donor'
+                  ? `/donor-darah/edit-data/${rec.id}`
+                  : rec.created_by_role === 'admin'
+                  ? `/admin/edit-data/${rec.id}`
+                  : `/klinik/edit-data/${rec.id}`
+              }
               className="inline-flex items-center gap-2 px-4 py-2.5 bg-slate-100 hover:bg-emerald-50 text-slate-800 hover:text-emerald-950 font-extrabold text-xs rounded-xl border border-slate-200 transition shadow-2xs"
             >
               <Edit2 className="w-3.5 h-3.5" />
@@ -971,17 +1020,22 @@ function DetailMiniMcuContent() {
               <div className="border-t border-slate-200/80 my-4"></div>
 
               {/* Last Updated Box */}
-              <div className="flex items-center justify-between text-[11px] font-bold text-slate-600 bg-white p-2.5 rounded-xl border border-slate-200 shadow-2xs mb-3">
+              <div
+                className="flex items-center justify-between text-[11px] font-bold text-slate-600 bg-white p-2.5 rounded-xl border border-slate-200 shadow-2xs mb-3"
+                suppressHydrationWarning
+              >
                 <span className="flex items-center gap-1.5 text-[#005930]">
                   <Clock className="w-3.5 h-3.5" />
                   <span>Terakhir Diperbarui:</span>
                 </span>
-                <span className="text-slate-900 font-black">
-                  {formatDate(
-                    latestRec.tanggal_pemeriksaan,
-                    true,
-                    (latestRec as any).jam_pemeriksaan || (latestRec as any).jam_periksa || (latestRec as any).vitals_updated_at || (latestRec as any).created_at
-                  )}
+                <span className="text-slate-900 font-black" suppressHydrationWarning>
+                  {mounted
+                    ? formatDate(
+                        latestRec.tanggal_pemeriksaan,
+                        true,
+                        (latestRec as any).jam_pemeriksaan || (latestRec as any).jam_periksa || (latestRec as any).vitals_updated_at || (latestRec as any).created_at
+                      )
+                    : formatDate(latestRec.tanggal_pemeriksaan, false)}
                 </span>
               </div>
 
@@ -1027,36 +1081,7 @@ function DetailMiniMcuContent() {
               </div>
             </div>
 
-            {/* Profile PDF Summary Card */}
-            <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center justify-between gap-3 shadow-2xs mt-3">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <div className="w-8 h-8 rounded-xl bg-[#005930] text-white font-black text-[10px] flex items-center justify-center shrink-0">
-                  PDF
-                </div>
-                <div className="min-w-0">
-                  <p className="text-xs font-black text-[#005930] truncate">
-                    Ringkasan_Vitals_&amp;Grafik_{nama.replace(/[^A-Za-z0-9]/g, '_')}.pdf
-                  </p>
-                  <p className="text-[10px] font-bold text-emerald-700">Informasi Karyawan, Tensi, Vitals &amp; Grafik Angka</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-1.5 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => alert(`Membuka Ringkasan Vitals PDF untuk ${nama}`)}
-                  className="px-2.5 py-1 bg-[#005930] hover:bg-[#004726] text-white font-bold text-[11px] rounded-lg transition cursor-pointer"
-                >
-                  Buka
-                </button>
-                <button
-                  type="button"
-                  onClick={() => alert(`Mengunduh Ringkasan Vitals PDF untuk ${nama}`)}
-                  className="px-2.5 py-1 bg-white hover:bg-slate-50 text-slate-700 font-bold text-[11px] rounded-lg border border-slate-200 transition cursor-pointer"
-                >
-                  Unduh
-                </button>
-              </div>
-            </div>
+            
           </div>
 
           {/* RIGHT COLUMN (7 Cols): Dynamic Trend Charts */}
@@ -1079,7 +1104,10 @@ function DetailMiniMcuContent() {
 
 
 
-          {/* Detailed Session Display Panel */}
+        {/* Detailed Session Display Panel */}
+        {rec.created_by_role === 'donor' ? (
+          <DonorSessionDetailCard record={rec} />
+        ) : (
           <div className="space-y-5 pt-2">
             {/* Info Tim Medis Pemeriksa */}
             {/* Info Tim Medis Pemeriksa / Instansi Sesuai Jenis Sesi */}
@@ -1373,6 +1401,7 @@ function DetailMiniMcuContent() {
                 val !== '-' &&
                 val !== 'null' &&
                 val !== 'undefined' &&
+                !val.startsWith('data:image/svg') &&
                 (val.startsWith('data:') ||
                  val.startsWith('http://') ||
                  val.startsWith('https://') ||
@@ -1381,7 +1410,8 @@ function DetailMiniMcuContent() {
 
               const hasDocLaporan = isRealDoc(rec.file_dokumen);
               const hasDocTindakLanjut = isRealDoc(rec.file_hasil_tindak_lanjut) || isRealDoc(rec.file_hasil_tindak_lanjut_kuratif);
-              const hasDocRujukan = isRealDoc(rec.file_rujukan) || isRealDoc(rec.file_surat_rujukan_intervensi);
+              const hasDocRujukan = (isRealDoc(rec.file_rujukan) && !rec.nama_rujukan_file?.toLowerCase().endsWith('.svg')) ||
+                                    (isRealDoc(rec.file_surat_rujukan_intervensi) && !rec.nama_surat_rujukan_intervensi?.toLowerCase().endsWith('.svg'));
               const hasDocSuratSakit = isRealDoc(rec.file_surat_sakit);
               const hasAnyUploadedDoc = hasDocLaporan || hasDocTindakLanjut || hasDocRujukan || hasDocSuratSakit;
 
@@ -1596,6 +1626,7 @@ function DetailMiniMcuContent() {
               );
             })()}
           </div>
+        )}
 
         {/* ==================================================== */}
         {/* DOCUMENT PREVIEW MODAL (UNIVERSAL PDF, IMAGE, EXCEL) */}

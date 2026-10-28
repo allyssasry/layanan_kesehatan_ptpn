@@ -63,8 +63,6 @@ export default function LoginPage() {
         router.push('/admin/dashboard');
       } else if (userRole === 'klinik') {
         router.push('/klinik/dashboard');
-      } else if (userRole === 'karyawan') {
-        router.push('/employee/dashboard');
       } else {
         router.push('/employee/dashboard');
       }

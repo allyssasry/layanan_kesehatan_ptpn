@@ -51,17 +51,17 @@ export async function loginWithSupabase(
         resolvedRole === 'admin'
           ? 'Teknologi Informasi & SDM'
           : resolvedRole === 'klinik'
-          ? 'Layanan Kesehatan'
+          ? 'Layanan Kesehatan & Klinik Pratama'
           : 'Operasional Kebun',
     };
     return { success: true, user: fallbackUser };
   }
 
   try {
-    // 1. Cari user di tabel mcu_users (atau users/profiles jika fallback)
+    // 1. Cari user di tabel mcu_users
     let userRow: any = null;
     
-    // Coba dari tabel mcu_users terlebih dahulu
+    // Query langsung ke tabel mcu_users
     const { data: mcuUserData, error: mcuUserErr } = await client
       .from('mcu_users')
       .select('*')
@@ -70,25 +70,6 @@ export async function loginWithSupabase(
 
     if (!mcuUserErr && mcuUserData) {
       userRow = mcuUserData;
-    } else {
-      // Coba tabel users
-      const { data: userData, error: userErr } = await client
-        .from('users')
-        .select('*')
-        .or(`email.ilike.${trimmedId},nik.ilike.${trimmedId}`)
-        .maybeSingle();
-
-      if (!userErr && userData) {
-        userRow = userData;
-      } else {
-        // Fallback cek ke tabel profiles
-        const { data: profileData } = await client
-          .from('profiles')
-          .select('*')
-          .or(`email.ilike.${trimmedId},nik.ilike.${trimmedId}`)
-          .maybeSingle();
-        if (profileData) userRow = profileData;
-      }
     }
 
     if (!userRow) {
@@ -98,11 +79,19 @@ export async function loginWithSupabase(
       };
     }
 
+    const userRoleRaw = String(userRow.role || '').toLowerCase();
+    const resolvedRole: UserRole =
+      userRoleRaw === 'admin'
+        ? 'admin'
+        : userRoleRaw === 'klinik' || userRoleRaw === 'donor_darah'
+        ? 'klinik'
+        : 'karyawan';
+
     // 2. Validasi Role (HARUS match dengan tab yang dipilih)
-    if (expectedRole && userRow.role !== expectedRole) {
+    if (expectedRole && resolvedRole !== expectedRole) {
       return {
         success: false,
-        error: `Peran tidak sesuai. Akun Anda terdaftar sebagai "${userRow.role.toUpperCase()}", tidak dapat masuk sebagai "${expectedRole.toUpperCase()}".`,
+        error: `Peran tidak sesuai. Akun Anda terdaftar sebagai "${resolvedRole.toUpperCase()}", tidak dapat masuk sebagai "${expectedRole.toUpperCase()}".`,
       };
     }
 
@@ -131,7 +120,7 @@ export async function loginWithSupabase(
       email: userRow.email,
       nik: userRow.nik || null,
       divisi: userRow.divisi || null,
-      role: userRow.role as UserRole,
+      role: resolvedRole,
       created_at: userRow.created_at,
       updated_at: userRow.updated_at,
     };
@@ -176,51 +165,29 @@ export async function registerWithSupabase(data: {
   }
 
   try {
-    // 1. Cek apakah email sudah terdaftar di mcu_users / users
-    let existingUser: any = null;
+    // 1. Cek apakah email sudah terdaftar di mcu_users
     const { data: existMcu } = await client
       .from('mcu_users')
       .select('id, email')
       .ilike('email', trimmedEmail)
       .maybeSingle();
-    if (existMcu) {
-      existingUser = existMcu;
-    } else {
-      const { data: existOld } = await client
-        .from('users')
-        .select('id, email')
-        .ilike('email', trimmedEmail)
-        .maybeSingle();
-      if (existOld) existingUser = existOld;
-    }
 
-    if (existingUser) {
+    if (existMcu) {
       return {
         success: false,
         error: 'Email sudah terdaftar. Silakan gunakan email lain atau langsung login.',
       };
     }
 
-    // 2. Cek apakah NIK sudah digunakan
+    // 2. Cek apakah NIK sudah digunakan di mcu_users
     if (data.nik && data.nik.trim()) {
-      let existingNik: any = null;
       const { data: existNikMcu } = await client
         .from('mcu_users')
         .select('id, nik')
         .ilike('nik', data.nik.trim())
         .maybeSingle();
-      if (existNikMcu) {
-        existingNik = existNikMcu;
-      } else {
-        const { data: existNikOld } = await client
-          .from('users')
-          .select('id, nik')
-          .ilike('nik', data.nik.trim())
-          .maybeSingle();
-        if (existNikOld) existingNik = existNikOld;
-      }
 
-      if (existingNik) {
+      if (existNikMcu) {
         return {
           success: false,
           error: 'NIK sudah terdaftar pada akun lain.',
@@ -228,7 +195,7 @@ export async function registerWithSupabase(data: {
       }
     }
 
-    // 3. Insert user baru ke tabel mcu_users (dengan fallback users/profiles)
+    // 3. Insert user baru ke tabel mcu_users
     const userPayload = {
       name: data.name.trim(),
       email: trimmedEmail,
@@ -250,39 +217,10 @@ export async function registerWithSupabase(data: {
     if (!insertMcuError && newMcuData) {
       insertedUser = newMcuData;
     } else {
-      // Coba tabel users
-      const { data: newUserData, error: insertError } = await client
-        .from('users')
-        .insert(userPayload)
-        .select()
-        .single();
-
-      if (!insertError && newUserData) {
-        insertedUser = newUserData;
-      } else {
-        // Fallback coba insert ke profiles jika users belum ada
-        const { data: profileData, error: profileErr } = await client
-          .from('profiles')
-          .insert({
-            name: data.name.trim(),
-            email: trimmedEmail,
-            password: hashedPassword,
-            role: data.role,
-            nik: data.nik?.trim() || null,
-            divisi: data.divisi?.trim() || null,
-          })
-          .select()
-          .single();
-
-        if (profileErr) {
-          console.error('Error insert user profile:', profileErr.message);
-          return {
-            success: false,
-            error: `Gagal menyimpan data akun: ${profileErr.message}`,
-          };
-        }
-        insertedUser = profileData;
-      }
+      return {
+        success: false,
+        error: `Gagal menyimpan data akun ke tabel mcu_users: ${insertMcuError?.message || 'Terjadi kesalahan sistem database.'}`,
+      };
     }
 
     const createdUser: User = {
@@ -341,29 +279,17 @@ export async function updateUserProfile(
         return { success: false, error: 'Kata sandi saat ini harus diisi untuk mengubah password.' };
       }
 
-      // Ambil user saat ini untuk cek current password dari mcu_users / users
-      let currentDbUser: any = null;
+      // Ambil user saat ini untuk cek current password dari mcu_users
       const { data: curMcuUser } = await client
         .from('mcu_users')
         .select('password')
         .eq('id', userId)
         .maybeSingle();
 
-      if (curMcuUser) {
-        currentDbUser = curMcuUser;
-      } else {
-        const { data: curUser } = await client
-          .from('users')
-          .select('password')
-          .eq('id', userId)
-          .maybeSingle();
-        if (curUser) currentDbUser = curUser;
-      }
-
-      if (currentDbUser && currentDbUser.password) {
-        const isCurrentMatch = currentDbUser.password.startsWith('$2')
-          ? bcrypt.compareSync(data.currentPassword, currentDbUser.password)
-          : currentDbUser.password === data.currentPassword;
+      if (curMcuUser && curMcuUser.password) {
+        const isCurrentMatch = curMcuUser.password.startsWith('$2')
+          ? bcrypt.compareSync(data.currentPassword, curMcuUser.password)
+          : curMcuUser.password === data.currentPassword;
 
         if (!isCurrentMatch) {
           return { success: false, error: 'Kata sandi saat ini tidak sesuai.' };
@@ -375,23 +301,14 @@ export async function updateUserProfile(
 
     updatePayload.updated_at = new Date().toISOString();
 
-    // Coba update ke mcu_users terlebih dahulu
+    // Update langsung ke tabel mcu_users
     const { error: errMcu } = await client
       .from('mcu_users')
       .update(updatePayload)
       .eq('id', userId);
 
     if (errMcu) {
-      // Fallback update ke users
-      const { error: errUser } = await client
-        .from('users')
-        .update(updatePayload)
-        .eq('id', userId);
-
-      if (errUser) {
-        // Fallback ke profiles jika users belum ada
-        await client.from('profiles').update(updatePayload).eq('id', userId);
-      }
+      return { success: false, error: errMcu.message };
     }
 
     return { success: true };

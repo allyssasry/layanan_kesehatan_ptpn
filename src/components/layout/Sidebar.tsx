@@ -15,6 +15,9 @@ import {
   LogOut,
   Stethoscope,
   Upload,
+  Droplets,
+  Clock,
+  HeartHandshake,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -92,7 +95,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
   };
 
   const isActive = (path: string) => {
-    if (path === '/admin/dashboard' || path === '/klinik/dashboard' || path === '/employee/dashboard') {
+    if (
+      path === '/admin/dashboard' ||
+      path === '/klinik/dashboard' ||
+      path === '/employee/dashboard'
+    ) {
       return pathname === path;
     }
     return pathname.startsWith(path);
@@ -104,6 +111,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       return [
         { href: '/employee/dashboard', label: 'Dashboard', icon: LayoutGrid },
         { href: '/employee/unggah-data', label: 'Unggah Data MCU', icon: Upload },
+        { href: '/employee/donor-darah', label: 'Riwayat Donor Darah', icon: Heart },
       ];
     }
     if (isAdmin) {
@@ -111,6 +119,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         { href: '/admin/dashboard', label: 'Admin Overview', icon: LayoutGrid },
         { href: '/admin/intervensi', label: 'Intervensi Layanan', icon: Heart, badge: todayIntervensiCount },
         { href: '/admin/rekapan-mcu', label: 'Hasil MCU', icon: FileText },
+        { href: '/donor-darah/data-donor', label: 'Data Donor Darah', icon: HeartHandshake },
         { href: '/admin/tambah-data', label: 'Tambah Data', icon: Plus },
         { href: '/admin/ekspor-excel', label: 'Ekspor Excel', icon: Download },
       ];
@@ -120,7 +129,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
       { href: '/klinik/dashboard', label: 'Inhouse Clinic Overview', icon: LayoutGrid },
       { href: '/klinik/intervensi', label: 'Intervensi Layanan', icon: Heart, badge: todayIntervensiCount },
       { href: '/klinik/rekapan-mini-mcu', label: 'Hasil Inhouse Clinic', icon: FileText },
-      { href: '/klinik/tambah-pemeriksaan', label: 'Tambah Data', icon: Plus, matchAlt: '/klinik/tambah-data' },
+      { href: '/donor-darah/data-donor', label: 'Data Donor Darah', icon: HeartHandshake },
+      { href: '/donor-darah/tambah-data', label: 'Tambah Donor Darah', icon: Droplets },
+      { href: '/klinik/tambah-pemeriksaan', label: 'Tambah Data Mini MCU', icon: Plus, matchAlt: '/klinik/tambah-data' },
       { href: '/klinik/ekspor-excel', label: 'Ekspor Excel', icon: Download },
     ];
   }, [isAdmin, isKaryawan, todayIntervensiCount]);

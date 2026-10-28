@@ -180,3 +180,69 @@ export interface Obat {
   id: number;
   nama_obat: string;
 }
+
+// ==========================================
+// DONOR DARAH TYPES & INTERFACES
+// ==========================================
+export type EntitasDonor = 'PTPN III / Holding' | 'PTPN I / SuppCo' | 'PTPN IV / PalmCo' | 'Bukan Entitas';
+
+export const ENTITAS_DONOR_OPTIONS: EntitasDonor[] = [
+  'PTPN III / Holding',
+  'PTPN I / SuppCo',
+  'PTPN IV / PalmCo',
+  'Bukan Entitas',
+];
+
+export const GOLONGAN_DARAH_OPTIONS = ['A', 'B', 'AB', 'O'] as const;
+export const GOLONGAN_DARAH_DETAIL_OPTIONS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'] as const;
+
+export const JENIS_DONOR_OPTIONS = [
+  'Darah Lengkap (Whole Blood)',
+  'Apheresis (Trombosit)',
+  'Plasma Konvalesen',
+  'Eritrosit',
+] as const;
+
+export interface DonorDarahRecord {
+  id: number;
+  user_id?: number | null;
+  mcu_record_id?: number | null;
+  nik: string;
+  nama_lengkap: string;
+  entitas: EntitasDonor | string;
+  divisi?: string | null;
+  jabatan?: string | null;
+  nomor_inhealth?: string | null;
+  nomor_bpjs?: string | null;
+  jenis_kelamin?: 'Laki-laki' | 'Perempuan' | null;
+  umur?: number | null;
+  foto?: string | null;
+
+  // Data Khusus Donor Darah
+  tanggal_donor: string; // YYYY-MM-DD
+  golongan_darah: string; // A, B, AB, O
+  rhesus?: string | null;
+  jenis_donor?: string | null;
+  lokasi_donor: string;
+  penyelenggara_donor?: string | null;
+  volume_darah?: string | null;
+  keterangan?: string | null;
+  bukti_donor?: string | null;
+  nama_bukti_donor?: string | null;
+  status?: string;
+
+  created_by_role?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface DonorStats {
+  totalPendonor: number;
+  totalDonor: number;
+  donorBulanIni: number;
+  totalVolumeMl: number;
+  entitasStats: { name: string; count: number; percentage: number }[];
+  golonganDarahStats: { name: string; count: number; percentage: number; color: string }[];
+  monthlyTrend: { month: string; count: number; volume: number }[];
+}
+

@@ -3,7 +3,7 @@ import { getSupabaseClient } from './supabase';
 
 export async function uploadMedicalFile(
   file: File,
-  folder: 'fotos' | 'dokumen' | 'rujukan' | 'surat-sakit' | 'intervensi' = 'dokumen'
+  folder: 'fotos' | 'dokumen' | 'rujukan' | 'surat-sakit' | 'intervensi' | 'donor' = 'dokumen'
 ): Promise<{ path: string; publicUrl: string } | null> {
   const client = getSupabaseClient();
   if (!client) return null;

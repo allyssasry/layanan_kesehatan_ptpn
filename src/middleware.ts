@@ -36,27 +36,35 @@ export function middleware(request: NextRequest) {
   }
 
   // 3. Rute Terproteksi - Wajib Login
-  const protectedPrefixes = ['/admin', '/klinik', '/employee', '/settings', '/notifications'];
+  const protectedPrefixes = ['/admin', '/klinik', '/employee', '/donor-darah', '/settings', '/notifications'];
   const isProtected = protectedPrefixes.some((p) => pathname.startsWith(p));
 
   if (isProtected && !userRole) {
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
+  // Helper redirect dashboard
+  const getDefaultDash = (r?: string) => {
+    if (r === 'admin') return '/admin/dashboard';
+    if (r === 'klinik') return '/klinik/dashboard';
+    return '/employee/dashboard';
+  };
+
   // 4. RBAC Guard per Role
   if (pathname.startsWith('/admin') && userRole !== 'admin') {
-    const dash = userRole === 'klinik' ? '/klinik/dashboard' : '/employee/dashboard';
-    return NextResponse.redirect(new URL(dash, request.url));
+    return NextResponse.redirect(new URL(getDefaultDash(userRole), request.url));
   }
 
-  if (pathname.startsWith('/klinik') && userRole !== 'klinik') {
-    const dash = userRole === 'admin' ? '/admin/dashboard' : '/employee/dashboard';
-    return NextResponse.redirect(new URL(dash, request.url));
+  if (pathname.startsWith('/klinik') && userRole !== 'klinik' && userRole !== 'admin') {
+    return NextResponse.redirect(new URL(getDefaultDash(userRole), request.url));
   }
 
-  if (pathname.startsWith('/employee') && userRole !== 'karyawan') {
-    const dash = userRole === 'admin' ? '/admin/dashboard' : '/klinik/dashboard';
-    return NextResponse.redirect(new URL(dash, request.url));
+  if (pathname.startsWith('/donor-darah') && userRole !== 'admin' && userRole !== 'klinik') {
+    return NextResponse.redirect(new URL(getDefaultDash(userRole), request.url));
+  }
+
+  if (pathname.startsWith('/employee') && userRole !== 'karyawan' && userRole !== 'admin') {
+    return NextResponse.redirect(new URL(getDefaultDash(userRole), request.url));
   }
 
   return NextResponse.next();
