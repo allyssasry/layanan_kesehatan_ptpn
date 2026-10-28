@@ -190,7 +190,7 @@ export default function EditDataDonorPage({ params }: EditDonorPageProps) {
 
       setSuccessMessage('Perubahan data donor darah berhasil disimpan!');
       setTimeout(() => {
-        router.push('/donor-darah/data-donor');
+        router.push('/klinik/donor-darah');
       }, 1200);
     } catch (err: any) {
       console.error('Error update donor darah:', err);
@@ -201,12 +201,12 @@ export default function EditDataDonorPage({ params }: EditDonorPageProps) {
   };
 
   return (
-    <AppLayout role="klinik" active="/donor-darah/data-donor">
+    <AppLayout role="klinik" active="/klinik/donor-darah">
       <div className="max-w-4xl mx-auto space-y-6 pb-16">
         {/* Navigation Breadcrumb */}
         <div className="flex items-center justify-between">
           <Link
-            href="/donor-darah/data-donor"
+            href="/klinik/donor-darah"
             className="inline-flex items-center gap-2 text-xs font-bold text-slate-600 hover:text-slate-900 transition cursor-pointer"
           >
             <ArrowLeft className="w-4 h-4" />
@@ -548,7 +548,7 @@ export default function EditDataDonorPage({ params }: EditDonorPageProps) {
           {/* Action Buttons */}
           <div className="flex items-center justify-end gap-3 pt-2">
             <Link
-              href="/donor-darah/data-donor"
+              href="/klinik/donor-darah"
               className="px-5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-700 hover:bg-slate-100 text-xs font-bold transition"
             >
               Batal

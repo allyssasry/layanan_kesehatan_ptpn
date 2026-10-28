@@ -146,11 +146,52 @@ export const McuProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return newId;
   };
 
-  // Update Data MCU
+  // Update Data MCU (dengan cascade sinkronisasi profil)
   const updateMcuRecord = async (id: number, data: Partial<McuRecord>) => {
+    const existing = mcuRecords.find((r) => r.id === id);
+    const targetNik = (data.nik || existing?.nik || '').trim();
+    const targetName = (data.nama_lengkap || existing?.nama_lengkap || '').trim().toLowerCase();
+    const newDept = data.departemen || (data as any).entitas;
+
     setMcuRecords((prev) =>
-      prev.map((rec) => (rec.id === id ? { ...rec, ...data } : rec))
+      prev.map((rec) => {
+        if (rec.id === id) return { ...rec, ...data };
+        const isMatch =
+          (targetNik && rec.nik === targetNik) ||
+          (targetName && (rec.nama_lengkap || '').trim().toLowerCase() === targetName);
+        if (isMatch) {
+          return {
+            ...rec,
+            ...(newDept ? { departemen: newDept, entitas: newDept } : {}),
+            ...(data.divisi !== undefined ? { divisi: data.divisi } : {}),
+            ...(data.jabatan !== undefined ? { jabatan: data.jabatan } : {}),
+            ...(data.foto !== undefined ? { foto: data.foto } : {}),
+          };
+        }
+        return rec;
+      })
     );
+
+    if (newDept || data.divisi !== undefined || data.jabatan !== undefined || data.foto !== undefined) {
+      setDonorRecords((prev) =>
+        prev.map((r) => {
+          const isMatch =
+            (targetNik && r.nik === targetNik) ||
+            (targetName && (r.nama_lengkap || '').trim().toLowerCase() === targetName);
+          if (isMatch) {
+            return {
+              ...r,
+              ...(newDept ? { entitas: newDept } : {}),
+              ...(data.divisi !== undefined ? { divisi: data.divisi } : {}),
+              ...(data.jabatan !== undefined ? { jabatan: data.jabatan } : {}),
+              ...(data.foto !== undefined ? { foto: data.foto } : {}),
+            };
+          }
+          return r;
+        })
+      );
+    }
+
     await updateMcuRecordInSupabase(id, data);
   };
 
@@ -173,11 +214,52 @@ export const McuProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return newId;
   };
 
-  // Update Data Mini-MCU
+  // Update Data Mini-MCU (dengan cascade sinkronisasi profil)
   const updateMiniMcuRecord = async (id: number, data: Partial<MiniMcuRecord>) => {
+    const existing = miniMcuRecords.find((r) => r.id === id);
+    const targetNik = (data.nik || existing?.nik || '').trim();
+    const targetName = (data.nama_lengkap || existing?.nama_lengkap || '').trim().toLowerCase();
+    const newDept = data.departemen || (data as any).entitas;
+
     setMiniMcuRecords((prev) =>
-      prev.map((rec) => (rec.id === id ? { ...rec, ...data } : rec))
+      prev.map((rec) => {
+        if (rec.id === id) return { ...rec, ...data };
+        const isMatch =
+          (targetNik && rec.nik === targetNik) ||
+          (targetName && (rec.nama_lengkap || '').trim().toLowerCase() === targetName);
+        if (isMatch) {
+          return {
+            ...rec,
+            ...(newDept ? { departemen: newDept, entitas: newDept } : {}),
+            ...(data.divisi !== undefined ? { divisi: data.divisi } : {}),
+            ...(data.jabatan !== undefined ? { jabatan: data.jabatan } : {}),
+            ...(data.foto !== undefined ? { foto: data.foto } : {}),
+          };
+        }
+        return rec;
+      })
     );
+
+    if (newDept || data.divisi !== undefined || data.jabatan !== undefined || data.foto !== undefined) {
+      setDonorRecords((prev) =>
+        prev.map((r) => {
+          const isMatch =
+            (targetNik && r.nik === targetNik) ||
+            (targetName && (r.nama_lengkap || '').trim().toLowerCase() === targetName);
+          if (isMatch) {
+            return {
+              ...r,
+              ...(newDept ? { entitas: newDept } : {}),
+              ...(data.divisi !== undefined ? { divisi: data.divisi } : {}),
+              ...(data.jabatan !== undefined ? { jabatan: data.jabatan } : {}),
+              ...(data.foto !== undefined ? { foto: data.foto } : {}),
+            };
+          }
+          return r;
+        })
+      );
+    }
+
     await updateMiniMcuRecordInSupabase(id, data);
   };
 
@@ -240,19 +322,82 @@ export const McuProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const updateDonorRecord = async (id: number, data: Partial<DonorDarahRecord>) => {
     const updated = await updateDonorRecordInSupabase(id, data);
     if (updated) {
-      const targetNik = updated.nik || data.nik;
+      const targetNik = (updated.nik || data.nik || '').trim();
+      const targetName = (updated.nama_lengkap || data.nama_lengkap || '').trim().toLowerCase();
+      const newEntitas = updated.entitas;
+
+      // 1. Update donorRecords untuk seluruh record yang bersangkutan (ID, NIK, atau Nama)
       setDonorRecords((prev) =>
         prev.map((r) => {
-          if (r.id === id) {
-            return { ...r, ...updated };
-          }
-          if (targetNik && r.nik === targetNik) {
+          const isTarget =
+            r.id === id ||
+            (targetNik && r.nik === targetNik) ||
+            (targetName && (r.nama_lengkap || '').trim().toLowerCase() === targetName);
+          if (isTarget) {
             return {
               ...r,
-              entitas: updated.entitas || r.entitas,
-              divisi: updated.divisi !== undefined ? updated.divisi : r.divisi,
-              jabatan: updated.jabatan !== undefined ? updated.jabatan : r.jabatan,
-              foto: updated.foto !== undefined ? updated.foto : r.foto,
+              ...(r.id === id ? updated : {}),
+              ...(newEntitas ? { entitas: newEntitas } : {}),
+              ...(updated.divisi !== undefined ? { divisi: updated.divisi } : {}),
+              ...(updated.jabatan !== undefined ? { jabatan: updated.jabatan } : {}),
+              ...(updated.foto !== undefined ? { foto: updated.foto } : {}),
+            };
+          }
+          return r;
+        })
+      );
+
+      // 2. Cascade update ke miniMcuRecords
+      setMiniMcuRecords((prev) =>
+        prev.map((r) => {
+          const isTarget =
+            (targetNik && r.nik === targetNik) ||
+            (targetName && (r.nama_lengkap || '').trim().toLowerCase() === targetName);
+          if (isTarget) {
+            return {
+              ...r,
+              ...(newEntitas ? { departemen: newEntitas, entitas: newEntitas } : {}),
+              ...(updated.divisi !== undefined ? { divisi: updated.divisi } : {}),
+              ...(updated.jabatan !== undefined ? { jabatan: updated.jabatan } : {}),
+              ...(updated.foto !== undefined ? { foto: updated.foto } : {}),
+            };
+          }
+          return r;
+        })
+      );
+
+      // 3. Cascade update ke mcuRecords
+      setMcuRecords((prev) =>
+        prev.map((r) => {
+          const isTarget =
+            (targetNik && r.nik === targetNik) ||
+            (targetName && (r.nama_lengkap || '').trim().toLowerCase() === targetName);
+          if (isTarget) {
+            return {
+              ...r,
+              ...(newEntitas ? { departemen: newEntitas, entitas: newEntitas } : {}),
+              ...(updated.divisi !== undefined ? { divisi: updated.divisi } : {}),
+              ...(updated.jabatan !== undefined ? { jabatan: updated.jabatan } : {}),
+              ...(updated.foto !== undefined ? { foto: updated.foto } : {}),
+            };
+          }
+          return r;
+        })
+      );
+
+      // 4. Cascade update ke karyawanRecords
+      setKaryawanRecords((prev) =>
+        prev.map((r) => {
+          const isTarget =
+            (targetNik && r.nik === targetNik) ||
+            (targetName && (r.nama_lengkap || '').trim().toLowerCase() === targetName);
+          if (isTarget) {
+            return {
+              ...r,
+              ...(newEntitas ? { departemen: newEntitas, entitas: newEntitas } : {}),
+              ...(updated.divisi !== undefined ? { divisi: updated.divisi } : {}),
+              ...(updated.jabatan !== undefined ? { jabatan: updated.jabatan } : {}),
+              ...(updated.foto !== undefined ? { foto: updated.foto } : {}),
             };
           }
           return r;

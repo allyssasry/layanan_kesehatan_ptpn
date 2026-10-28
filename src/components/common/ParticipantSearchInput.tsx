@@ -30,7 +30,7 @@ export const ParticipantSearchInput: React.FC<ParticipantSearchInputProps> = ({
   name,
   onBlur,
 }) => {
-  const { mcuRecords, miniMcuRecords, karyawanRecords } = useMcu();
+  const { mcuRecords, miniMcuRecords, karyawanRecords, donorRecords } = useMcu();
   const [isOpen, setIsOpen] = useState(false);
   const [remoteResults, setRemoteResults] = useState<EmployeeProfile[]>([]);
   const [loading, setLoading] = useState(false);
@@ -75,12 +75,13 @@ export const ParticipantSearchInput: React.FC<ParticipantSearchInputProps> = ({
       });
     };
 
-    // Prioritize miniMcuRecords & karyawanRecords first as they often have the latest profile/photo
+    // Prioritize donorRecords & miniMcuRecords first as they have the latest profile/photo and entitas
+    (donorRecords || []).forEach(add);
     (miniMcuRecords || []).forEach(add);
     (karyawanRecords || []).forEach(add);
     (mcuRecords || []).forEach(add);
     return Array.from(map.values());
-  }, [mcuRecords, miniMcuRecords, karyawanRecords]);
+  }, [mcuRecords, miniMcuRecords, karyawanRecords, donorRecords]);
 
   // Combined suggestions
   const suggestions = useMemo(() => {

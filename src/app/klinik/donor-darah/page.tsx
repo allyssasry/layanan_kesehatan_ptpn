@@ -148,7 +148,7 @@ export default function DataDonorDarahPage() {
   };
 
   return (
-    <AppLayout role="klinik" active="/donor-darah/data-donor">
+    <AppLayout role="klinik" active="/klinik/donor-darah">
       <div className="space-y-6 pb-12">
         {/* Header Title Bar */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -175,7 +175,7 @@ export default function DataDonorDarahPage() {
               <span>Ekspor Excel</span>
             </button>
             <Link
-              href="/donor-darah/tambah-data"
+              href="/klinik/donor-darah/tambah"
               className="px-4 py-2.5 rounded-xl bg-rose-700 hover:bg-rose-800 text-white text-xs font-bold transition flex items-center gap-2 cursor-pointer shadow-md shadow-rose-900/15"
             >
               <Plus className="w-4 h-4 stroke-[3]" />
@@ -383,7 +383,7 @@ export default function DataDonorDarahPage() {
 
                           {/* Edit Link */}
                           <Link
-                            href={`/donor-darah/edit-data/${r.id}`}
+                            href={`/klinik/donor-darah/edit/${r.id}`}
                             className="p-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 transition cursor-pointer"
                             title="Edit Data Donor"
                           >

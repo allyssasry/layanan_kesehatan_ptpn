@@ -102,6 +102,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
     ) {
       return pathname === path;
     }
+    if (path === '/klinik/donor-darah') {
+      return pathname === '/klinik/donor-darah' || pathname.startsWith('/klinik/donor-darah/edit');
+    }
     return pathname.startsWith(path);
   };
 
@@ -119,7 +122,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         { href: '/admin/dashboard', label: 'Admin Overview', icon: LayoutGrid },
         { href: '/admin/intervensi', label: 'Intervensi Layanan', icon: Heart, badge: todayIntervensiCount },
         { href: '/admin/rekapan-mcu', label: 'Hasil MCU', icon: FileText },
-        { href: '/donor-darah/data-donor', label: 'Data Donor Darah', icon: HeartHandshake },
+        { href: '/klinik/donor-darah', label: 'Data Donor Darah', icon: HeartHandshake },
         { href: '/admin/tambah-data', label: 'Tambah Data', icon: Plus },
         { href: '/admin/ekspor-excel', label: 'Ekspor Excel', icon: Download },
       ];
@@ -129,8 +132,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
       { href: '/klinik/dashboard', label: 'Inhouse Clinic Overview', icon: LayoutGrid },
       { href: '/klinik/intervensi', label: 'Intervensi Layanan', icon: Heart, badge: todayIntervensiCount },
       { href: '/klinik/rekapan-mini-mcu', label: 'Hasil Inhouse Clinic', icon: FileText },
-      { href: '/donor-darah/data-donor', label: 'Data Donor Darah', icon: HeartHandshake },
-      { href: '/donor-darah/tambah-data', label: 'Tambah Donor Darah', icon: Droplets },
+      { href: '/klinik/donor-darah', label: 'Data Donor Darah', icon: HeartHandshake },
+      { href: '/klinik/donor-darah/tambah', label: 'Tambah Donor Darah', icon: Droplets },
       { href: '/klinik/tambah-pemeriksaan', label: 'Tambah Data Mini MCU', icon: Plus, matchAlt: '/klinik/tambah-data' },
       { href: '/klinik/ekspor-excel', label: 'Ekspor Excel', icon: Download },
     ];

@@ -253,7 +253,7 @@ export const PatientDonorHistorySection: React.FC<PatientDonorHistorySectionProp
           {/* Action Link for Admin / Klinik */}
           {(role === 'admin' || role === 'klinik') && (
             <Link
-              href="/donor-darah/tambah-data"
+              href="/klinik/donor-darah/tambah"
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-[#005930] hover:bg-[#004726] text-white transition shadow-2xs cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5" />
@@ -279,7 +279,7 @@ export const PatientDonorHistorySection: React.FC<PatientDonorHistorySectionProp
           </p>
           {(role === 'admin' || role === 'klinik') && (
             <Link
-              href="/donor-darah/tambah-data"
+              href="/klinik/donor-darah/tambah"
               className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-[#005930] hover:bg-[#004726] text-white transition shadow-xs mt-2"
             >
               <Plus className="w-3.5 h-3.5" />

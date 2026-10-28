@@ -932,7 +932,7 @@ function DetailMiniMcuContent() {
             <Link
               href={
                 rec.created_by_role === 'donor'
-                  ? `/donor-darah/edit-data/${rec.id}`
+                  ? `/klinik/donor-darah/edit/${rec.id}`
                   : rec.created_by_role === 'admin'
                   ? `/admin/edit-data/${rec.id}`
                   : `/klinik/edit-data/${rec.id}`

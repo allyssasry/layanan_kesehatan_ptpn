@@ -1,3 +1,4 @@
+import { syncParticipantProfileEverywhere } from './profileSyncService';
 // src/services/mcuService.ts - Service Layer Sinkron dengan Laravel PTPN-LK3
 import { getSupabaseClient } from '@/lib/supabase';
 import { McuRecord, MiniMcuRecord, AppNotification, Obat } from '@/types/mcu';
@@ -478,6 +479,16 @@ export async function searchEmployees(searchTerm: string = '', limit: number = 1
       }
       const { data: userList } = await userQuery.limit(limit);
 
+      // 5. Query Donor Darah (memuat entitas dan riwayat terbaru)
+      let donorQuery = client
+        .from(TABLES.DONOR_DARAH)
+        .select('nama_lengkap, nik, divisi, jabatan, entitas, nomor_inhealth, nomor_bpjs, jenis_kelamin, umur, golongan_darah, foto, updated_at')
+        .order('updated_at', { ascending: false });
+      if (query) {
+        donorQuery = donorQuery.or(`nama_lengkap.ilike.%${query}%,nik.ilike.%${query}%`);
+      }
+      const { data: donorList } = await donorQuery.limit(limit * 2);
+
       const addProfile = (p: any) => {
         const name = (p.nama_lengkap || p.name || '').trim();
         const nik = (p.nik || '').trim();
@@ -531,7 +542,8 @@ export async function searchEmployees(searchTerm: string = '', limit: number = 1
         });
       };
 
-      // Urutkan prioritas: miniList & karyList duluan karena biasanya memiliki foto profil terbaru
+      // Urutkan prioritas: donorList & miniList duluan karena memiliki data profil & entitas terbaru
+      (donorList || []).forEach(addProfile);
       (miniList || []).forEach(addProfile);
       (karyList || []).forEach(addProfile);
       (mcuList || []).forEach(addProfile);
@@ -1215,6 +1227,25 @@ export async function updateMcuRecordInSupabase(
     ]);
     if (mcuUpdate.error && kUpdate.error) {
       console.error('Error update in Supabase:', mcuUpdate.error.message);
+    } else {
+      // Sinkronkan ke modul lain (Donor Darah, Mini MCU, dll)
+      const targetNik = record.nik;
+      const targetName = record.nama_lengkap;
+      if (targetNik || targetName) {
+        await syncParticipantProfileEverywhere(client, {
+          nik: targetNik,
+          nama_lengkap: targetName,
+          entitas: record.departemen || (record as any).entitas,
+          departemen: record.departemen || (record as any).entitas,
+          divisi: record.divisi,
+          jabatan: record.jabatan,
+          nomor_inhealth: record.nomor_inhealth,
+          nomor_bpjs: (record as any).nomor_bpjs || record.bpjs,
+          jenis_kelamin: record.jenis_kelamin,
+          umur: typeof record.umur === 'number' ? record.umur : (parseInt(String(record.umur || ''), 10) || null),
+          foto: record.foto,
+        });
+      }
     }
   } catch (err) {
     console.error('Exception updateMcuRecordInSupabase:', err);
@@ -1514,6 +1545,25 @@ export async function updateMiniMcuRecordInSupabase(
     const { error } = await client.from(tblMini).update(payload).eq('id', id);
     if (error) {
       console.error('Error update mini_mcu_records in Supabase:', error.message);
+    } else {
+      // Sinkronkan ke modul lain (Donor Darah, MCU Berkala, Karyawan)
+      const targetNik = record.nik;
+      const targetName = record.nama_lengkap;
+      if (targetNik || targetName) {
+        await syncParticipantProfileEverywhere(client, {
+          nik: targetNik,
+          nama_lengkap: targetName,
+          entitas: record.departemen || (record as any).entitas,
+          departemen: record.departemen || (record as any).entitas,
+          divisi: record.divisi,
+          jabatan: record.jabatan,
+          nomor_inhealth: record.nomor_inhealth,
+          nomor_bpjs: (record as any).nomor_bpjs || record.bpjs,
+          jenis_kelamin: record.jenis_kelamin,
+          umur: typeof record.umur === 'number' ? record.umur : (parseInt(String(record.umur || ''), 10) || null),
+          foto: record.foto,
+        });
+      }
     }
   } catch (err) {
     console.error('Exception updateMiniMcuRecordInSupabase:', err);

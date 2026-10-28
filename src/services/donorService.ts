@@ -330,6 +330,88 @@ export async function insertDonorRecordToSupabase(
 /**
  * Update data donor darah di Supabase
  */
+/**
+ * Sinkronisasi data profil karyawan/peserta (entitas, departemen, divisi, jabatan, foto, dll)
+ * ke SELURUH tabel rekam medis di Supabase (mcu_donor_darah, mcu_mini_mcu_records, mcu_records, mcu_karyawan_records).
+ * Dicocokkan berdasarkan NIK atau Nama Lengkap, sehingga perubahan di salah satu modul
+ * langsung ter-update di modul lainnya dan tersimpan untuk autocomplete masa depan.
+ */
+export async function syncParticipantProfileEverywhere(
+  client: any,
+  params: {
+    nik?: string | null;
+    nama_lengkap?: string | null;
+    entitas?: string | null;
+    departemen?: string | null;
+    divisi?: string | null;
+    jabatan?: string | null;
+    nomor_inhealth?: string | null;
+    nomor_bpjs?: string | null;
+    jenis_kelamin?: string | null;
+    umur?: number | null;
+    foto?: string | null;
+  }
+): Promise<void> {
+  if (!client) return;
+
+  const targetNik = params.nik?.trim();
+  const targetName = params.nama_lengkap?.trim();
+  if (!targetNik && !targetName) return;
+
+  const rawEntity = params.entitas || params.departemen;
+  const normalizedEntity = rawEntity ? normalizeEntitasDonor(rawEntity) : undefined;
+
+  const donorSync: Record<string, any> = { updated_at: new Date().toISOString() };
+  if (normalizedEntity) donorSync.entitas = normalizedEntity;
+  if (params.divisi !== undefined) donorSync.divisi = params.divisi;
+  if (params.jabatan !== undefined) donorSync.jabatan = params.jabatan;
+  if (params.nomor_inhealth !== undefined) donorSync.nomor_inhealth = params.nomor_inhealth;
+  if (params.nomor_bpjs !== undefined) donorSync.nomor_bpjs = params.nomor_bpjs;
+  if (params.jenis_kelamin !== undefined) donorSync.jenis_kelamin = params.jenis_kelamin;
+  if (params.umur !== undefined) donorSync.umur = params.umur;
+  if (params.foto !== undefined) donorSync.foto = params.foto;
+
+  const mcuSync: Record<string, any> = { updated_at: new Date().toISOString() };
+  if (normalizedEntity) {
+    mcuSync.departemen = normalizedEntity;
+    mcuSync.entitas = normalizedEntity;
+  }
+  if (params.divisi !== undefined) mcuSync.divisi = params.divisi;
+  if (params.jabatan !== undefined) mcuSync.jabatan = params.jabatan;
+  if (params.nomor_inhealth !== undefined) mcuSync.nomor_inhealth = params.nomor_inhealth;
+  if (params.nomor_bpjs !== undefined) mcuSync.nomor_bpjs = params.nomor_bpjs;
+  if (params.jenis_kelamin !== undefined) mcuSync.jenis_kelamin = params.jenis_kelamin;
+  if (params.umur !== undefined) mcuSync.umur = params.umur;
+  if (params.foto !== undefined) mcuSync.foto = params.foto;
+
+  // 1. Sync mcu_donor_darah
+  try {
+    if (targetNik && targetNik !== '0000000000') {
+      await client.from('mcu_donor_darah').update(donorSync).eq('nik', targetNik);
+    }
+    if (targetName) {
+      await client.from('mcu_donor_darah').update(donorSync).ilike('nama_lengkap', targetName);
+    }
+  } catch (err) {
+    console.warn('Sync donor table error:', err);
+  }
+
+  // 2. Sync mcu_mini_mcu_records, mcu_records, mcu_karyawan_records
+  const mcuTables = ['mcu_mini_mcu_records', 'mcu_records', 'mcu_karyawan_records'];
+  for (const tbl of mcuTables) {
+    try {
+      if (targetNik && targetNik !== '0000000000') {
+        await client.from(tbl).update(mcuSync).eq('nik', targetNik);
+      }
+      if (targetName) {
+        await client.from(tbl).update(mcuSync).ilike('nama_lengkap', targetName);
+      }
+    } catch (err) {
+      console.warn('Sync ' + tbl + ' error:', err);
+    }
+  }
+}
+
 export async function updateDonorRecordInSupabase(
   id: number,
   updates: Partial<DonorDarahRecord>
@@ -351,30 +433,31 @@ export async function updateDonorRecordInSupabase(
         .single();
 
       if (!error && data) {
-        // Sinkronkan entitas, divisi, dan data profil ke semua record lain dengan NIK yang sama
         const targetNik = data.nik || updates.nik;
-        if (targetNik) {
-          const syncUpdates: Record<string, any> = { updated_at: new Date().toISOString() };
-          if (cleanedUpdates.entitas) syncUpdates.entitas = cleanedUpdates.entitas;
-          if (cleanedUpdates.divisi !== undefined) syncUpdates.divisi = cleanedUpdates.divisi;
-          if (cleanedUpdates.jabatan !== undefined) syncUpdates.jabatan = cleanedUpdates.jabatan;
-          if (cleanedUpdates.nomor_inhealth !== undefined) syncUpdates.nomor_inhealth = cleanedUpdates.nomor_inhealth;
-          if (cleanedUpdates.nomor_bpjs !== undefined) syncUpdates.nomor_bpjs = cleanedUpdates.nomor_bpjs;
-          if (cleanedUpdates.jenis_kelamin) syncUpdates.jenis_kelamin = cleanedUpdates.jenis_kelamin;
-          if (cleanedUpdates.umur !== undefined) syncUpdates.umur = cleanedUpdates.umur;
-          if (cleanedUpdates.foto !== undefined) syncUpdates.foto = cleanedUpdates.foto;
+        const targetName = data.nama_lengkap || updates.nama_lengkap;
 
-          await client
-            .from('mcu_donor_darah')
-            .update(syncUpdates)
-            .eq('nik', targetNik);
-        }
+        // Sinkronkan ke SELURUH tabel rekam medis di Supabase (Donor, Mini MCU, MCU, Karyawan)
+        await syncParticipantProfileEverywhere(client, {
+          nik: targetNik,
+          nama_lengkap: targetName,
+          entitas: cleanedUpdates.entitas,
+          divisi: cleanedUpdates.divisi,
+          jabatan: cleanedUpdates.jabatan,
+          nomor_inhealth: cleanedUpdates.nomor_inhealth,
+          nomor_bpjs: cleanedUpdates.nomor_bpjs,
+          jenis_kelamin: cleanedUpdates.jenis_kelamin,
+          umur: cleanedUpdates.umur,
+          foto: cleanedUpdates.foto,
+        });
 
         const local = getLocalFallbackRecords();
         saveLocalFallbackRecords(
           local.map((r) => {
             if (r.id === id) return { ...r, ...data };
-            if (targetNik && r.nik === targetNik) {
+            const isMatch =
+              (targetNik && r.nik === targetNik) ||
+              (targetName && (r.nama_lengkap || '').trim().toLowerCase() === targetName.trim().toLowerCase());
+            if (isMatch) {
               return {
                 ...r,
                 ...(cleanedUpdates.entitas ? { entitas: cleanedUpdates.entitas } : {}),
@@ -397,12 +480,16 @@ export async function updateDonorRecordInSupabase(
   const local = getLocalFallbackRecords();
   let updatedRecord: DonorDarahRecord | null = null;
   const targetNik = updates.nik;
+  const targetName = updates.nama_lengkap;
   const updatedList = local.map((r) => {
     if (r.id === id) {
       updatedRecord = { ...r, ...cleanedUpdates };
       return updatedRecord;
     }
-    if (targetNik && r.nik === targetNik) {
+    const isMatch =
+      (targetNik && r.nik === targetNik) ||
+      (targetName && (r.nama_lengkap || '').trim().toLowerCase() === targetName.trim().toLowerCase());
+    if (isMatch) {
       return {
         ...r,
         ...(cleanedUpdates.entitas ? { entitas: cleanedUpdates.entitas } : {}),
